@@ -918,8 +918,8 @@ with tab0:
     borough_risk['CV (%)'] = (borough_risk['std_price'] / borough_risk['med_price'] * 100).round(1)
     borough_risk['Rủi ro biến động'] = pd.cut(
         borough_risk['CV (%)'],
-        bins=[0, 80, 120, float('inf')],
-        labels=['Thấp', 'Trung bình', ' Cao']
+        bins=[0, 48, 53, float('inf')],
+        labels=['🟢 Thấp', '🟡 Trung bình', '🔴 Cao']
     )
     borough_risk = borough_risk.sort_values('CV (%)')
 
@@ -927,7 +927,18 @@ with tab0:
     risk_display.columns = ['Quận','Giá trung vị','Biến động CV (%)','Số giao dịch','Đánh giá rủi ro']
     risk_display['Giá trung vị'] = risk_display['Giá trung vị'].apply(fmt_M)
     risk_display['Số giao dịch'] = risk_display['Số giao dịch'].apply(lambda v: f'{v:,}')
-    st.dataframe(risk_display.set_index('Quận'), width='stretch')
+
+    def style_risk_level(val):
+        if 'Thấp' in str(val):
+            return 'background-color: rgba(16, 185, 129, 0.2); color: #047857; font-weight: bold;'
+        elif 'Trung bình' in str(val):
+            return 'background-color: rgba(245, 158, 11, 0.2); color: #b45309; font-weight: bold;'
+        elif 'Cao' in str(val):
+            return 'background-color: rgba(239, 68, 68, 0.2); color: #b91c1c; font-weight: bold;'
+        return ''
+
+    styled_risk = risk_display.set_index('Quận').style.map(style_risk_level, subset=['Đánh giá rủi ro'])
+    st.dataframe(styled_risk, width='stretch')
 
 # ════════════════════════════════════════════════════════════
 # TAB 1 — PHÂN TÍCH KHU VỰC & BẢN ĐỒ HEATMAP
