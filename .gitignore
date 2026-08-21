@@ -1,0 +1,28 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Heavy raw crawl & backup data (không dùng trong runtime Dashboard)
+data/raw/
+data/Data crawl/
+data/backup_stable/
+data/data clean/
+data/nyc_warehouse.db
+data/warehouse/nyc_warehouse.db
+*.lock

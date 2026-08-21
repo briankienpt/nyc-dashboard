@@ -1,0 +1,13 @@
+HƯỚNG DẪN CHẠY DASHBOARD BẤT ĐỘNG SẢN NYC (LOCAL)
+
+Chào bạn, để chạy ứng dụng Dashboard này trên máy tính cá nhân để test, bạn chỉ cần làm theo 2 bước cực kỳ đơn giản sau:
+
+Yêu cầu tiên quyết: Máy tính của bạn cần cài đặt sẵn Python (trong lúc cài đặt nhớ tick vào ô "Add Python to PATH").
+
+BƯỚC 1: Giải nén toàn bộ thư mục ZIP này ra máy của bạn.
+BƯỚC 2: Nhấn đúp chuột (mở) file "Run_Dashboard.bat"
+
+Tất cả những việc còn lại như tạo môi trường ảo (để không làm ảnh hưởng đến thư viện có sẵn trên máy bạn), cài đặt các thư viện cần thiết (pandas, streamlit...) và mở trình duyệt đều sẽ được thực hiện hoàn toàn tự động!
+
+Lưu ý: Lần chạy đầu tiên có thể mất 1-2 phút để tải và cài đặt thư viện. Các lần sau sẽ mở lên ngay lập tức.
+Khi muốn tắt app, bạn chỉ cần tắt cửa sổ trình duyệt và tắt cửa sổ màu đen (CMD) là xong.
