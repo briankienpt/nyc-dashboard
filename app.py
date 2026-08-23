@@ -1579,10 +1579,20 @@ with tab4:
         mape_val = cb_m.get('MAPE', 43.53)
         rmse_val = cb_m.get('RMSE', 403632)
 
-        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta="+31.4% vs Linear Reg")
-        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta="-$104k so với Baseline", delta_color="inverse")
-        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%")
-        m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}")
+        lr_r2 = lr_m.get('R2', 0.3165)
+        lr_mae = lr_m.get('MAE', 363171)
+        lr_mape = lr_m.get('MAPE', 94.40)
+        lr_rmse = lr_m.get('RMSE', 485764)
+
+        diff_r2 = (r2_val - lr_r2) * 100
+        diff_mae = lr_mae - mae_val
+        diff_mape = lr_mape - mape_val
+        diff_rmse = lr_rmse - rmse_val
+
+        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta=f"+{diff_r2:.1f}% vs Linear Reg")
+        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta=f"-${diff_mae:,.0f} so với Baseline", delta_color="inverse")
+        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%", delta=f"-{diff_mape:.1f}% so với Baseline", delta_color="inverse")
+        m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}", delta=f"-${diff_rmse:,.0f} so với Baseline", delta_color="inverse")
 
         section_q("Bảng đối chiếu hiệu năng các mô hình học máy (Model Benchmark)",
                   "So sánh hiệu năng trên cùng tập kiểm thử độc lập (20% dữ liệu thực tế 2025-2026).")
