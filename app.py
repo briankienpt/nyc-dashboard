@@ -285,13 +285,29 @@ def get_neighborhood_coords(neighborhood, borough_name):
 # ════════════════════════════════════════════════════════════
 # HÀM DỮ LIỆU
 # ════════════════════════════════════════════════════════════
-@st.cache_data
-def load_data():
+def _get_data_cache_key():
     candidates = [
-        os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv'),
-        os.path.join(ROOT_DIR, 'data', 'DATA.csv'),
         os.path.join(ROOT_DIR, 'DATA.csv'),
-        os.path.join(ROOT_DIR, 'output', 'Du_Lieu_Cleaned_Sample_1000.csv')
+        os.path.join(ROOT_DIR, 'data', 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv'),
+        'DATA.csv',
+        'data/DATA.csv',
+        'data/data clean/DATA.csv'
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return f"{p}_{os.path.getmtime(p)}"
+    return "no_data_key"
+
+@st.cache_data
+def _load_data_cached(cache_key):
+    candidates = [
+        os.path.join(ROOT_DIR, 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'data', 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv'),
+        'DATA.csv',
+        'data/DATA.csv',
+        'data/data clean/DATA.csv'
     ]
     path = None
     for p in candidates:
@@ -300,7 +316,11 @@ def load_data():
             break
     if not path:
         return None, "Không tìm thấy file DATA.csv"
-    df = pd.read_csv(path)
+    try:
+        df = pd.read_csv(path)
+    except Exception as e:
+        return None, f"Lỗi đọc file: {e}"
+
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
         return None, f"Thiếu cột: {', '.join(missing)}"
@@ -322,6 +342,9 @@ def load_data():
     df['sale_date_parsed']  = pd.to_datetime(df['sale_date'], dayfirst=True, errors='coerce')
     df['sale_month']        = df['sale_date_parsed'].dt.month
     return df, None
+
+def load_data():
+    return _load_data_cached(_get_data_cache_key())
 
 @st.cache_data
 def load_ml_data():
