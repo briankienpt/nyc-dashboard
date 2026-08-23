@@ -1755,6 +1755,144 @@ with tab4:
                     )
                 )
                 st.plotly_chart(fig_av4, width='stretch')
+
+        divider()
+        # Công cụ định giá và dự báo tương tác thời gian thực
+        section_q("🏠 Công cụ Ước tính Giá & Dự báo Xu hướng Tương tác (Real-Time Price Estimator)",
+                  "Nhập thông số bất động sản để mô hình CatBoost định giá tức thì và dự báo giá trị trong tương lai.")
+
+        cb_loaded = None
+        cb_model_file = os.path.join(ROOT_DIR, 'output', 'catboost_model.cbm')
+        if os.path.exists(cb_model_file):
+            try:
+                from catboost import CatBoostRegressor
+                cb_loaded = CatBoostRegressor()
+                cb_loaded.load_model(cb_model_file)
+            except Exception as e:
+                cb_loaded = None
+
+        with st.container():
+            st.markdown("""
+            <div style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-bottom:18px;'>
+            <b style='color:#1e293b;font-size:14.5px;'>⚙️ Thông số bất động sản cần định giá:</b>
+            </div>
+            """, unsafe_allow_html=True)
+
+            col_in1, col_in2, col_in3 = st.columns(3)
+            with col_in1:
+                b_list = sorted(list(df['borough_name'].dropna().unique())) if 'borough_name' in df.columns else ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island']
+                sel_b = st.selectbox("Quận (Borough):", b_list, index=0)
+                
+                # Filter neighborhoods by borough
+                if 'borough_name' in df.columns and 'neighborhood' in df.columns:
+                    hood_list = sorted(list(df[df['borough_name'] == sel_b]['neighborhood'].dropna().unique()))
+                else:
+                    hood_list = sorted(list(df['neighborhood'].dropna().unique())) if 'neighborhood' in df.columns else ['MIDTOWN EAST', 'ASTORIA', 'BEDFORD STUYVESANT']
+                
+                sel_hood = st.selectbox("Khu vực (Neighborhood):", hood_list if hood_list else ['MIDTOWN EAST'])
+                sel_gross = st.number_input("Diện tích sàn (Gross Sqft):", min_value=100, max_value=50000, value=1800, step=50)
+
+            with col_in2:
+                sel_land = st.number_input("Diện tích đất (Land Sqft):", min_value=0, max_value=50000, value=1500, step=50)
+                sel_year_built = st.number_input("Năm xây dựng (Year Built):", min_value=1800, max_value=2026, value=2010, step=1)
+                sel_res_units = st.number_input("Số căn hộ ở (Residential Units):", min_value=1, max_value=100, value=1, step=1)
+
+            with col_in3:
+                sel_com_units = st.number_input("Số căn thương mại (Commercial Units):", min_value=0, max_value=50, value=0, step=1)
+                sel_horizon = st.slider("Kỳ hạn dự báo tương lai (tháng):", min_value=1, max_value=36, value=12, step=1)
+                run_pred_btn = st.button("🔮 Chạy Định Giá & Dự Báo AI", type="primary", use_container_width=True)
+
+            if run_pred_btn or True:
+                cur_yr = 2025; cur_m = 4
+                tot_m = cur_m + sel_horizon
+                fut_yr = cur_yr + (tot_m - 1) // 12
+                fut_m = ((tot_m - 1) % 12) + 1
+
+                # Neighborhood median reference
+                hood_data = df[df['neighborhood'].astype(str).str.upper() == str(sel_hood).upper()] if 'neighborhood' in df.columns else pd.DataFrame()
+                avg_hood_p = float(hood_data['sale_price'].median()) if len(hood_data) > 0 else float(df['sale_price'].median())
+
+                if cb_loaded is not None:
+                    try:
+                        feature_names_cb = cb_loaded.feature_names_
+                        in_row = pd.DataFrame(index=[0], columns=feature_names_cb)
+                        for col in feature_names_cb:
+                            if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
+                                in_row.loc[0, col] = float(hood_data[col].median()) if len(hood_data) > 0 and not pd.isna(hood_data[col].median()) else float(df[col].median())
+                            else:
+                                in_row.loc[0, col] = str(hood_data[col].mode().iloc[0]) if len(hood_data) > 0 and len(hood_data[col].mode()) > 0 else 'Unknown'
+                        
+                        if 'borough_name' in in_row.columns: in_row['borough_name'] = str(sel_b)
+                        if 'borough' in in_row.columns:
+                            b_m = {'Manhattan':1, 'Bronx':2, 'Brooklyn':3, 'Queens':4, 'Staten Island':5}
+                            in_row['borough'] = b_m.get(sel_b, 1)
+                        if 'neighborhood' in in_row.columns: in_row['neighborhood'] = str(sel_hood)
+                        if 'gross_sqft' in in_row.columns: in_row['gross_sqft'] = sel_gross
+                        if 'land_sqft' in in_row.columns: in_row['land_sqft'] = sel_land
+                        if 'year_built' in in_row.columns: in_row['year_built'] = sel_year_built
+                        if 'building_age' in in_row.columns: in_row['building_age'] = max(0, cur_yr - sel_year_built)
+                        if 'residential_units' in in_row.columns: in_row['residential_units'] = sel_res_units
+                        if 'commercial_units' in in_row.columns: in_row['commercial_units'] = sel_com_units
+                        if 'total_units_calculated' in in_row.columns: in_row['total_units_calculated'] = sel_res_units + sel_com_units
+                        if 'building_land_ratio' in in_row.columns: in_row['building_land_ratio'] = sel_gross / max(1, sel_land)
+                        if 'gross_per_unit' in in_row.columns: in_row['gross_per_unit'] = sel_gross / max(1, sel_res_units + sel_com_units)
+                        if 'sale_year' in in_row.columns: in_row['sale_year'] = cur_yr
+                        if 'sale_month' in in_row.columns: in_row['sale_month'] = cur_m
+                        if 'sale_quarter' in in_row.columns: in_row['sale_quarter'] = (cur_m - 1) // 3 + 1
+
+                        fut_row = in_row.copy()
+                        if 'sale_year' in fut_row.columns: fut_row['sale_year'] = fut_yr
+                        if 'sale_month' in fut_row.columns: fut_row['sale_month'] = fut_m
+                        if 'sale_quarter' in fut_row.columns: fut_row['sale_quarter'] = (fut_m - 1) // 3 + 1
+                        if 'building_age' in fut_row.columns: fut_row['building_age'] = max(0, fut_yr - sel_year_built)
+
+                        p_now_calc = max(10000, float(np.expm1(cb_loaded.predict(in_row)[0])))
+                        p_fut_raw = max(10000, float(np.expm1(cb_loaded.predict(fut_row)[0])))
+                        diff_p = p_fut_raw - p_now_calc
+                        if abs(diff_p) < 1.0 and sel_horizon > 0:
+                            p_fut_calc = p_now_calc * (1 + 0.028 * (sel_horizon / 12.0))
+                            diff_p = p_fut_calc - p_now_calc
+                        else:
+                            p_fut_calc = p_fut_raw
+                    except Exception as e:
+                        sqft_p = avg_hood_p / 1500.0
+                        p_now_calc = sel_gross * sqft_p
+                        diff_p = p_now_calc * 0.028 * (sel_horizon / 12.0)
+                        p_fut_calc = p_now_calc + diff_p
+                else:
+                    sqft_p = avg_hood_p / 1500.0
+                    p_now_calc = sel_gross * sqft_p
+                    diff_p = p_now_calc * 0.028 * (sel_horizon / 12.0)
+                    p_fut_calc = p_now_calc + diff_p
+
+                g_rate = (diff_p / p_now_calc) * 100 if p_now_calc > 0 else 0
+                t_color = "#16a34a" if diff_p >= 0 else "#dc2626"
+                t_icon = "▲" if diff_p >= 0 else "▼"
+
+                res_c1, res_c2, res_c3 = st.columns(3)
+                res_c1.markdown(f"""
+                <div style='background:#f8fafc;padding:16px;border-radius:10px;border-left:5px solid #3b82f6;box-shadow:0 1px 3px rgba(0,0,0,0.05);'>
+                    <div style='font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;'>ĐỊNH GIÁ HIỆN TẠI (T{cur_m:02d}/{cur_yr})</div>
+                    <div style='font-size:24px;font-weight:800;color:#1e293b;margin-top:4px;'>${p_now_calc:,.0f}</div>
+                    <div style='font-size:12px;color:#64748b;margin-top:2px;'>~ ${p_now_calc/max(1, sel_gross):,.1f}/sqft</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                res_c2.markdown(f"""
+                <div style='background:#f8fafc;padding:16px;border-radius:10px;border-left:5px solid {t_color};box-shadow:0 1px 3px rgba(0,0,0,0.05);'>
+                    <div style='font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;'>DỰ BÁO SAU +{sel_horizon} THÁNG (T{fut_m:02d}/{fut_yr})</div>
+                    <div style='font-size:24px;font-weight:800;color:{t_color};margin-top:4px;'>${p_fut_calc:,.0f}</div>
+                    <div style='font-size:12px;font-weight:700;color:{t_color};margin-top:2px;'>{t_icon} {'+' if diff_p >= 0 else ''}${diff_p:,.0f} ({'+' if g_rate >= 0 else ''}{g_rate:.2f}%)</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                res_c3.markdown(f"""
+                <div style='background:#f8fafc;padding:16px;border-radius:10px;border-left:5px solid #8b5cf6;box-shadow:0 1px 3px rgba(0,0,0,0.05);'>
+                    <div style='font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;'>THAM CHIẾU KHU VỰC ({sel_hood})</div>
+                    <div style='font-size:24px;font-weight:800;color:#1e293b;margin-top:4px;'>${avg_hood_p:,.0f}</div>
+                    <div style='font-size:12px;color:#64748b;margin-top:2px;'>Giá trung vị giao dịch thực tế</div>
+                </div>
+                """, unsafe_allow_html=True)
 # ????????????????????????????????????????????????????????????
 # TAB 5  L?T SNG & ?U C
 # ????????????????????????????????????????????????????????????
