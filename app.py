@@ -1756,6 +1756,82 @@ with tab4:
                 )
                 st.plotly_chart(fig_av4, width='stretch')
 
+        if df_pred is not None:
+            st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+            comp_df = df_pred.rename(columns={'Actual': 'Actual_Price', 'Predicted': 'Predicted_Price'}).sort_values('Actual_Price').reset_index(drop=True)
+            n_samples = min(100, len(comp_df))
+            sample_indices = np.linspace(0, len(comp_df) - 1, n_samples).astype(int)
+            plot_100 = comp_df.iloc[sample_indices].reset_index(drop=True)
+
+            fig_100 = go.Figure()
+            # Giá thực tế: Blue solid line with round dots
+            fig_100.add_trace(go.Scatter(
+                x=plot_100.index,
+                y=plot_100['Actual_Price'],
+                mode='lines+markers',
+                name='Giá thực tế',
+                line=dict(color='#2563eb', width=2),
+                marker=dict(size=4, symbol='circle'),
+                hovertemplate='Mẫu #%{x}<br>Giá thực tế: $%{y:,.0f}<extra></extra>'
+            ))
+            # Giá AI dự báo: Orange dashed line with square markers
+            fig_100.add_trace(go.Scatter(
+                x=plot_100.index,
+                y=plot_100['Predicted_Price'],
+                mode='lines+markers',
+                name='Giá AI dự báo',
+                line=dict(color='#ea580c', width=2, dash='dash'),
+                marker=dict(size=4, symbol='square'),
+                hovertemplate='Mẫu #%{x}<br>Giá AI dự báo: $%{y:,.0f}<extra></extra>'
+            ))
+
+            fig_100.update_layout(
+                title=dict(
+                    text='<b>So sánh Giá thực tế và Giá dự báo trên 100 mẫu kiểm nghiệm (R² = 0.5616)</b>',
+                    x=0.5,
+                    xanchor='center',
+                    font=dict(size=14, color='#0f172a')
+                ),
+                xaxis=dict(
+                    title=dict(text='<b>100 Mẫu bất động sản kiểm thử (Xếp theo giá tăng dần)</b>', font=dict(size=11, color='#1e293b')),
+                    range=[-1, 101],
+                    tickvals=[0, 20, 40, 60, 80, 100],
+                    showgrid=True,
+                    gridcolor='rgba(226, 232, 240, 0.8)',
+                    griddash='dot',
+                    showline=True,
+                    linewidth=1,
+                    linecolor='#94a3b8',
+                    mirror=True
+                ),
+                yaxis=dict(
+                    title=dict(text='<b>Giá bán (USD)</b>', font=dict(size=11, color='#1e293b')),
+                    range=[-100000, 3100000],
+                    tickvals=[0, 500000, 1000000, 1500000, 2000000, 2500000, 3000000],
+                    ticktext=['$0.00M', '$0.50M', '$1.00M', '$1.50M', '$2.00M', '$2.50M', '$3.00M'],
+                    showgrid=True,
+                    gridcolor='rgba(226, 232, 240, 0.8)',
+                    griddash='dot',
+                    showline=True,
+                    linewidth=1,
+                    linecolor='#94a3b8',
+                    mirror=True
+                ),
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                height=400,
+                margin=dict(l=20, r=20, t=50, b=20),
+                legend=dict(
+                    x=0.03,
+                    y=0.97,
+                    bgcolor='rgba(255, 255, 255, 0.92)',
+                    bordercolor='#cbd5e1',
+                    borderwidth=1,
+                    font=dict(size=11, color='#1e293b')
+                )
+            )
+            st.plotly_chart(fig_100, width='stretch')
+
         divider()
         # Công cụ định giá và dự báo tương tác thời gian thực
         section_q("🏠 Công cụ Ước tính Giá & Dự báo Xu hướng Tương tác (Real-Time Price Estimator)",
