@@ -58,7 +58,7 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
     doc.add_paragraph('Để giải quyết trọn vẹn bài toán trên, dự án đặt ra các mục tiêu cốt lõi sau:')
     doc.add_paragraph('- Mục tiêu số 1: Xây dựng một kho dữ liệu (Data Warehouse) đồng nhất từ đa nguồn: Dữ liệu giao dịch (NYC Rolling Sales), dữ liệu địa chính (PLUTO), và dữ liệu không gian mở (OpenStreetMap).')
     doc.add_paragraph('- Mục tiêu số 2: Phân tích sự ảnh hưởng của tiện ích đô thị. Bằng việc áp dụng thuật toán lượng giác không gian (Haversine Formula) và cấu trúc dữ liệu cKDTree, hệ thống phải đo lường chính xác khoảng cách từ mỗi ngôi nhà đến hàng ngàn tiện ích công cộng.')
-    doc.add_paragraph('- Mục tiêu số 3: Huấn luyện mô hình trí tuệ nhân tạo (AI). Sử dụng Random Forest Regressor để học các mẫu (patterns) từ dữ liệu lịch sử và chỉ ra đâu là yếu tố quan trọng nhất ảnh hưởng đến giá bán.')
+    doc.add_paragraph('- Mục tiêu số 3: Huấn luyện mô hình trí tuệ nhân tạo (AI). Sử dụng CatBoost Regressor để học các mẫu (patterns) phi tuyến tính từ dữ liệu và chỉ ra đâu là yếu tố quan trọng nhất ảnh hưởng đến giá bán.')
     doc.add_paragraph('- Mục tiêu số 4: Trực quan hóa dữ liệu. Đưa toàn bộ kết quả lên một Dashboard tương tác (Interactive Dashboard) giúp người dùng cuối (End-user) dễ dàng tra cứu, lọc và phân tích dữ liệu mà không cần kiến thức lập trình.')
 
     add_heading_with_level(doc, '1.3 Lập kế hoạch dự án', 2)
@@ -66,7 +66,7 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
     doc.add_paragraph('1. Thu thập dữ liệu (Extract): Thu thập hơn 60,000 bản ghi từ API của chính phủ và tải tệp JSON từ OpenStreetMap.')
     doc.add_paragraph('2. Tiền xử lý (Transform & Clean): Xử lý giá trị khuyết thiếu (Missing values), nội suy (Imputation), và loại bỏ ngoại lai (Outliers) bằng phương pháp Interquartile Range (IQR).')
     doc.add_paragraph('3. Tích hợp không gian (Spatial Join): Nối dữ liệu giao dịch với dữ liệu tiện ích dựa trên tọa độ Kinh độ/Vĩ độ.')
-    doc.add_paragraph('4. Mô hình hóa (Modeling): Huấn luyện các mô hình Machine Learning, tinh chỉnh siêu tham số (Hyperparameter tuning) và xuất ra các chỉ số MAE, RMSE, R2.')
+    doc.add_paragraph('4. Mô hình hóa (Modeling): Huấn luyện các mô hình Machine Learning CatBoost Gradient Boosting, tinh chỉnh siêu tham số (Hyperparameter tuning) và xuất ra các chỉ số MAE, RMSE, R2, MAPE.')
     doc.add_paragraph('5. Triển khai (Deployment): Xây dựng Streamlit Dashboard và xuất báo cáo tự động.')
 
     # ── CHƯƠNG 2: Phân tích yêu cầu khách hàng & Cơ sở lý thuyết ──
@@ -81,10 +81,10 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
     doc.add_paragraph('- Bảng Fact (fact_sales): Lưu trữ các độ đo (Metrics) có thể tính toán được, ví dụ như sale_price, gross_sqft, price_per_sqft.')
     doc.add_paragraph('- Các bảng Dimension (dim_location, dim_property, dim_amenities): Lưu trữ thông tin phân loại, ví dụ như tên đường, loại tòa nhà, mã bưu điện. Khi Dashboard cần lọc dữ liệu, nó chỉ cần truy vấn Bảng Dimension sau đó JOIN với Bảng Fact.')
 
-    add_heading_with_level(doc, '2.3 Cơ sở lý thuyết: Thuật toán Random Forest Regressor', 2)
-    doc.add_paragraph('Random Forest là một thuật toán Học máy thuộc nhóm Ensemble Learning, dựa trên kỹ thuật Bagging (Bootstrap Aggregating). Cụ thể, thuật toán này xây dựng hàng trăm Cây quyết định (Decision Trees) song song trong quá trình huấn luyện.')
-    doc.add_paragraph('Mỗi cây quyết định sẽ đưa ra một dự đoán giá nhà độc lập. Kết quả cuối cùng của Rừng ngẫu nhiên (Random Forest) là trung bình cộng (Average) của tất cả các cây. Điều này giúp mô hình triệt tiêu được hiện tượng Quá khớp (Overfitting) vốn rất hay xảy ra với Decision Tree đơn lẻ.')
-    doc.add_paragraph('Ưu điểm của Random Forest trong dự án BĐS: Khả năng bắt được các mối quan hệ phi tuyến tính (Non-linear relationships). Ví dụ: Không phải khoảng cách đến siêu thị càng gần thì giá càng tăng vô hạn, mức độ tăng giá sẽ chững lại ở một ngưỡng nhất định. Random Forest có khả năng mô hình hóa điều này.')
+    add_heading_with_level(doc, '2.3 Cơ sở lý thuyết: Thuật toán CatBoost Regressor', 2)
+    doc.add_paragraph('CatBoost (Categorical Boosting) là thuật toán Gradient Boosting trên cây quyết định hiện đại, được tối ưu đặc biệt cho dữ liệu dạng phân loại (categorical features) và dữ liệu chuỗi thời gian.')
+    doc.add_paragraph('CatBoost giải quyết triệt để bài toán Prediction Shift (độ lệch dự báo) và Target Leakage thông qua kỹ thuật Ordered Boosting. Nhờ đó, mô hình đạt độ chính xác cao vượt trội và hạn chế tối đa Overfitting.')
+    doc.add_paragraph('Ưu điểm của CatBoost trong dự án BĐS: Tự động mã hóa các đặc trưng phân loại phức tạp (như Neighborhood, Building Class) mà không làm bùng nổ số chiều dữ liệu, đồng thời mô hình hóa chính xác các mối quan hệ phi tuyến tính.')
 
     add_heading_with_level(doc, '2.4 Cơ sở lý thuyết: Tính toán không gian với cKDTree', 2)
     doc.add_paragraph('Để tìm được trạm Subway gần nhất cho 60,000 căn nhà từ một danh sách 500 trạm Subway, thuật toán vét cạn (Brute-force) sẽ phải thực hiện 60,000 x 500 = 30 triệu phép tính khoảng cách (O(N*M)). Quá trình này vô cùng chậm.')
@@ -119,15 +119,16 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
     doc.add_paragraph('Các thuật toán Học máy cần dữ liệu ở cùng một thang đo. Dự án sử dụng StandardScaler để đưa các biến liên tục (như diện tích, khoảng cách) về phân phối chuẩn (Mean = 0, Std = 1). Các biến phân loại (Borough) được mã hóa bằng One-Hot Encoding để mô hình có thể hiểu được.')
     
     add_heading_with_level(doc, '4.2 Đánh giá Mô hình (Model Evaluation)', 2)
-    doc.add_paragraph('Dữ liệu được chia thành tập Huấn luyện (Train, 80%) và tập Kiểm thử (Test, 20%). Sau khi huấn luyện, thuật toán Random Forest Regressor đưa ra kết quả sau trên tập Kiểm thử:')
+    doc.add_paragraph('Dữ liệu được chia thành tập Huấn luyện (Train, 80%) và tập Kiểm thử (Test, 20%). Sau khi huấn luyện, thuật toán CatBoost Regressor đưa ra kết quả sau trên tập Kiểm thử:')
     
-    rf_metrics = ml_metrics.get('Random Forest', {})
-    doc.add_paragraph(f" - MAE (Sai số tuyệt đối trung bình): ${rf_metrics.get('MAE', 0):,.2f}/sqft. Điều này có nghĩa là trung bình mỗi dự báo của mô hình lệch khoảng {rf_metrics.get('MAE', 0):,.2f} USD cho mỗi feet vuông.")
-    doc.add_paragraph(f" - RMSE (Sai số bình phương trung bình): ${rf_metrics.get('RMSE', 0):,.2f}/sqft. Chỉ số này nhạy cảm với các sai số lớn, chứng tỏ mô hình vẫn còn một số điểm dự báo bị lệch xa thực tế.")
-    doc.add_paragraph(f" - R² Score (Mức độ giải thích): {rf_metrics.get('R2', 0):.3f}. Mô hình giải thích được khoảng {float(rf_metrics.get('R2', 0))*100:.1f}% phương sai của giá nhà.")
+    cb_metrics = ml_metrics.get('CatBoost Regressor', {})
+    doc.add_paragraph(f" - MAE (Sai số tuyệt đối trung bình): ${cb_metrics.get('MAE', 0):,.0f}. Cho thấy mức sai lệch dự báo trung bình của mô hình trên toàn bộ thị trường.")
+    doc.add_paragraph(f" - RMSE (Căn bậc hai sai số): ${cb_metrics.get('RMSE', 0):,.0f}.")
+    doc.add_paragraph(f" - R² Score (Mức độ giải thích): {cb_metrics.get('R2', 0):.4f} ({float(cb_metrics.get('R2', 0))*100:.1f}%). Mô hình giải thích tốt biến động của thị trường.")
+    doc.add_paragraph(f" - MAPE (Tỷ lệ sai số phần trăm): {cb_metrics.get('MAPE', 0):.2f}%.")
     
     add_heading_with_level(doc, '4.3 Mức độ quan trọng của Đặc trưng (Feature Importance)', 2)
-    doc.add_paragraph('Mô hình Random Forest không chỉ dự báo mà còn cung cấp bộ trọng số nội bộ để giải thích yếu tố nào quan trọng nhất. Kết quả thu được như sau:')
+    doc.add_paragraph('Mô hình CatBoost không chỉ dự báo mà còn cung cấp bộ trọng số nội bộ để giải thích yếu tố nào quan trọng nhất. Kết quả thu được như sau:')
     
     table = doc.add_table(rows=1, cols=2)
     table.style = 'Table Grid'
@@ -178,7 +179,7 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
     doc.add_paragraph('- Áp dụng SQLite giúp Data Warehouse nhẹ nhàng, dễ chia sẻ mã nguồn.')
     
     add_heading_with_level(doc, '7.4 Hướng phát triển', 2)
-    doc.add_paragraph('Trong tương lai, hệ thống có thể mở rộng xử lý thời gian thực bằng Apache Kafka, và sử dụng các mô hình Deep Learning tiên tiến (như LSTM, XGBoost) thay vì Random Forest cơ bản để tăng vọt độ chính xác.')
+    doc.add_paragraph('Trong tương lai, hệ thống có thể mở rộng xử lý thời gian thực bằng Apache Kafka, và tích hợp thêm các mô hình chuỗi thời gian sâu (Deep Time Series) để tăng cường năng lực dự báo.')
 
     # ── CHƯƠNG 8 & 9 ──
     add_heading_with_level(doc, '8. Tổng kết', 1)

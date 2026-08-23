@@ -1570,8 +1570,7 @@ with tab4:
     if not ml_metrics:
         st.warning("⚠️ Chưa có kết quả mô hình. Hãy kiểm tra các file dữ liệu trong thư mục output/")
     else:
-        cb_m = ml_metrics.get('CatBoost Regressor', ml_metrics.get('Random Forest', {}))
-        rf_m = ml_metrics.get('Random Forest', {})
+        cb_m = ml_metrics.get('CatBoost Regressor', {})
         lr_m = ml_metrics.get('Linear Regression', {})
 
         m1, m2, m3, m4 = st.columns(4)
@@ -1590,7 +1589,7 @@ with tab4:
         
         rows4 = [
             {
-                'Mô hình Machine Learning': '🏆 CatBoost Regressor (Đề xuất)',
+                'Mô hình Machine Learning': '🏆 CatBoost Regressor (Mô hình chính thức)',
                 'Điểm R²': f"{cb_m.get('R2', 0.5616):.4f} ({cb_m.get('R2', 0.5616)*100:.1f}%)",
                 'Sai số tuyệt đối (MAE)': f"${cb_m.get('MAE', 260831):,.0f}",
                 'Căn bậc hai sai số (RMSE)': f"${cb_m.get('RMSE', 403632):,.0f}",
@@ -1598,20 +1597,12 @@ with tab4:
                 'Đánh giá': '⭐ Tối ưu nhất (R² cao nhất, MAE thấp nhất)'
             },
             {
-                'Mô hình Machine Learning': '🌲 Random Forest Regressor',
-                'Điểm R²': f"{rf_m.get('R2', 0.4458):.4f} ({rf_m.get('R2', 0.4458)*100:.1f}%)",
-                'Sai số tuyệt đối (MAE)': f"${rf_m.get('MAE', 299967):,.0f}",
-                'Căn bậc hai sai số (RMSE)': f"${rf_m.get('RMSE', 437435):,.0f}",
-                'Tỷ lệ lệch (MAPE)': f"{rf_m.get('MAPE', 71.95):.2f}%",
-                'Đánh giá': ' Khá tốt'
-            },
-            {
-                'Mô hình Machine Learning': '📈 Linear Regression (Baseline)',
+                'Mô hình Machine Learning': '📈 Linear Regression (Baseline so sánh)',
                 'Điểm R²': f"{lr_m.get('R2', 0.3165):.4f} ({lr_m.get('R2', 0.3165)*100:.1f}%)",
                 'Sai số tuyệt đối (MAE)': f"${lr_m.get('MAE', 363171):,.0f}",
                 'Căn bậc hai sai số (RMSE)': f"${lr_m.get('RMSE', 485764):,.0f}",
                 'Tỷ lệ lệch (MAPE)': f"{lr_m.get('MAPE', 94.4):.2f}%",
-                'Đánh giá': ' Cơ sở so sánh'
+                'Đánh giá': ' Cơ sở so sánh tuyến tính'
             }
         ]
         st.dataframe(pd.DataFrame(rows4).set_index('Mô hình Machine Learning'), width='stretch')

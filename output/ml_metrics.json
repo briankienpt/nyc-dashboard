@@ -1,15 +1,9 @@
 {
   "CatBoost Regressor": {
-    "MAE": 262537.42,
-    "RMSE": 405727.26,
-    "R2": 0.557,
-    "MAPE": 43.72
-  },
-  "Random Forest": {
-    "MAE": 299967,
-    "RMSE": 437435,
-    "R2": 0.4458,
-    "MAPE": 71.95
+    "MAE": 260831,
+    "RMSE": 403632,
+    "R2": 0.5616,
+    "MAPE": 43.53
   },
   "Linear Regression": {
     "MAE": 363171,
