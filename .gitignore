@@ -22,7 +22,7 @@ Thumbs.db
 data/raw/
 data/Data crawl/
 data/backup_stable/
-data/data clean/
 data/nyc_warehouse.db
 data/warehouse/nyc_warehouse.db
+!data/data clean/DATA.csv
 *.lock

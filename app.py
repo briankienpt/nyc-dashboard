@@ -287,8 +287,18 @@ def get_neighborhood_coords(neighborhood, borough_name):
 # ════════════════════════════════════════════════════════════
 @st.cache_data
 def load_data():
-    path = os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv')
-    if not os.path.exists(path):
+    candidates = [
+        os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'data', 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'DATA.csv'),
+        os.path.join(ROOT_DIR, 'output', 'Du_Lieu_Cleaned_Sample_1000.csv')
+    ]
+    path = None
+    for p in candidates:
+        if os.path.exists(p):
+            path = p
+            break
+    if not path:
         return None, "Không tìm thấy file DATA.csv"
     df = pd.read_csv(path)
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
