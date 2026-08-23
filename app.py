@@ -728,22 +728,16 @@ st.markdown("<div style='margin-bottom:18px'></div>", unsafe_allow_html=True)
 # ════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════
-tab0, tab1, tab2, tab4, tab_macro, tab_micro = st.tabs([
-    "  Tổng quan",
-    "️  Phân tích khu vực",
-    "  Yếu tố quyết định giá",
-    "  Dự báo & Mô hình ML",
-    "  Phân tích Đầu tư BĐS",
-    "  Tra cứu BĐS & Tiện ích"
+tab0, tab1, tab2, tab4, tab_micro = st.tabs([
+    "🏙️  Tổng quan",
+    "🗺️  Phân tích khu vực",
+    "📐  Yếu tố quyết định giá",
+    "🤖  Dự báo & Mô hình ML",
+    "🏡  Tra cứu BĐS & Tiện ích"
 ])
 
-with tab_macro:
-    st.markdown("### 🏛️ Đánh giá Tiềm năng Khu vực")
-    st.info("Hệ thống dựa vào thuật toán và dữ liệu lịch sử để phân tích các khu vực (Neighborhoods) có đặc tính tăng trưởng hoặc thanh khoản cao nhất.")
-    tab_adv, tab_evid = st.tabs(["🎯 Gợi ý Đầu tư", "📊 Dữ liệu Lịch sử"])
-
 with tab_micro:
-    st.markdown("### 🏡 Tra cứu Bất động sản")
+    st.markdown("### 🏡 Tra cứu Bất động sản & Phân tích Tiện ích")
     tab_search, tab7 = st.tabs(["🔍 Tìm kiếm Bất động sản", "📊 Phân tích Tiện ích"])
 
 
@@ -2321,162 +2315,5 @@ with tab_search:
 
 
 
-# ════════════════════════════════════════════════════════════
-# TAB 7 — MINH CHỨNG DỮ LIỆU
-# ════════════════════════════════════════════════════════════
-with tab_evid:
-    st.info(" **HƯỚNG DẪN:** Dưới đây là các biểu đồ thực tế chứng minh cho những đề xuất vừa được AI đưa ra ở Tab Đề xuất Chiến lược.")
-    st.divider()
 
-
-    
-    # In các khu vực top 3 tích sản
-    if len(top_3_tich_san_names) > 0:
-        st.markdown(f"####  Lịch sử Tăng trưởng của Top 3 Đề xuất: {', '.join(top_3_tich_san_names)}")
-        cols_top = st.columns(3)
-        for i, neigh_name in enumerate(top_3_tich_san_names):
-            boro_name = valid_neighs[valid_neighs['Khu Vực'] == neigh_name].iloc[0]['Quận']
-            with cols_top[i]:
-                fig_top, pct_top = plot_single_neighborhood(boro_name, neigh_name, f"{neigh_name}", C_GREEN, height=250)
-                st.plotly_chart(fig_top, use_container_width=True)
-                render_mini_confidence(neigh_name)
-    else:
-        st.warning("Không có khu vực đề xuất tích sản nào để minh chứng.")
-
-    divider()
-
-
-    
-    if len(top_3_luot_song_names) > 0:
-        st.markdown(f"####  Lịch sử Tăng trưởng của Top 3 Điểm Nóng: {', '.join(top_3_luot_song_names)}")
-        cols_top2 = st.columns(3)
-        for i, neigh_name in enumerate(top_3_luot_song_names):
-            boro_name = ""
-            if 'flip_stats' in locals() and not flip_stats.empty:
-                match = flip_stats[flip_stats['neighborhood'] == neigh_name]
-                if not match.empty:
-                    boro_name = df_t3[df_t3['neighborhood'] == neigh_name]['borough_name'].iloc[0] if not df_t3[df_t3['neighborhood'] == neigh_name].empty else ""
-            
-            with cols_top2[i]:
-                if boro_name:
-                    fig_top2, _ = plot_single_neighborhood(boro_name, neigh_name, f"{neigh_name}", C_RED, height=250)
-                    st.plotly_chart(fig_top2, use_container_width=True)
-                else:
-                    st.info(f"Đang tính toán {neigh_name}...")
-    else:
-        st.warning("Không có điểm nóng lướt sóng nào để hiển thị.")
-
-    divider()
-    st.markdown("<h4 style='color:#1e293b; margin-top:0px;'> Toàn cảnh thị trường (Để đối chiếu)</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b; font-size:14px;'>Sử dụng đường xu hướng của toàn thị trường để thấy các khu vực được đề xuất đã vượt trội như thế nào.</p>", unsafe_allow_html=True)
-    mts_all = df_t3.groupby('ym_dt')['sale_price'].median().reset_index().sort_values('ym_dt')
-    if len(mts_all) > 0:
-        base_price_all = mts_all['sale_price'].iloc[0]
-        mts_all['growth_pct'] = (mts_all['sale_price'] - base_price_all) / base_price_all * 100
-
-        fig_all = go.Figure()
-        fig_all.add_trace(go.Scatter(
-            x=mts_all['ym_dt'], y=mts_all['growth_pct'], mode='lines',
-            name='Thị trường chung', line=dict(color=C_BLUE, width=4),
-            customdata=mts_all['sale_price'],
-            hovertemplate='<b>Thị trường chung</b><br>%{x|%m/%Y}<br>Tăng trưởng: <b>%{y:+.1f}%</b><br>Giá: $%{customdata:,.0f}<extra></extra>'
-        ))
-        if len(mts_all) >= 3:
-            x_num = mdates.date2num(mts_all['ym_dt'])
-            coef = np.polyfit(x_num, mts_all['growth_pct'].ffill().bfill().values, 1)
-            trend = np.polyval(coef, x_num)
-            fig_all.add_trace(go.Scatter(
-                x=mts_all['ym_dt'], y=trend, mode='lines', showlegend=False,
-                line=dict(color=C_ORANGE, width=2.5, dash='dash'), hoverinfo='skip'))
-
-        fig_all.add_hline(y=0, line_color="#9CA3AF", line_width=1.5, line_dash="dash")
-        clayout(fig_all, h=300, t=20, b=20)
-        fig_all.update_layout(
-            title_text="",
-            hovermode='x unified',
-            yaxis=dict(ticksuffix='%', title="Tăng trưởng Giá (%)", zeroline=False))
-        st.plotly_chart(fig_all, width='stretch')
-        
-    # --- NỘI SOI KHU VỰC ĐỘNG ---
-    divider()
-    st.markdown("<h4 style='color:#1e293b; margin-bottom: 5px;'> Nội soi khu vực (Kiểm chứng tự do)</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b; font-size:14px; margin-bottom: 15px;'>Nếu bạn chọn 1 khu vực bất kỳ ở Bảng xếp hạng bên Tab Đề Xuất, nó sẽ hiện ở đây.</p>", unsafe_allow_html=True)
-    
-    try:
-        all_valid_options = valid_neighs['Khu Vực'].tolist() if len(valid_neighs) > 0 else []
-        default_idx = 0
-        
-        # Nếu người dùng có click chọn bên Tab 1, lấy ra làm giá trị mặc định
-        if 'event' in locals() and hasattr(event, 'selection') and hasattr(event.selection, 'rows'):
-            selected_rows = event.selection.rows
-            if len(selected_rows) > 0 and len(valid_neighs) > 0:
-                selected_idx_tab1 = selected_rows[0]
-                if selected_idx_tab1 < len(df_leaderboard):
-                    selected_n_tab1 = df_leaderboard.iloc[selected_idx_tab1]['Khu Vực']
-                    if selected_n_tab1 in all_valid_options:
-                        default_idx = all_valid_options.index(selected_n_tab1)
-        elif 'event' in locals() and isinstance(event, dict) and 'selection' in event:
-            selected_rows = event['selection'].get('rows', [])
-            if len(selected_rows) > 0 and len(valid_neighs) > 0:
-                selected_idx_tab1 = selected_rows[0]
-                if selected_idx_tab1 < len(df_leaderboard):
-                    selected_n_tab1 = df_leaderboard.iloc[selected_idx_tab1]['Khu Vực']
-                    if selected_n_tab1 in all_valid_options:
-                        default_idx = all_valid_options.index(selected_n_tab1)
-                        
-        if len(all_valid_options) > 0:
-            selected_n = st.selectbox("Lựa chọn khu vực để phân tích chi tiết:", options=all_valid_options, index=default_idx)
-            
-            st.markdown(f"""
-            <div id='target-explorer' style='background:linear-gradient(135deg, #0f172a, #1e293b, #334155); padding:10px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-top:5px; margin-bottom: 5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
-                <h4 style='margin-top:0px; color:#F8FAFC; margin-bottom: 4px; font-size: 18px;'> Hồ sơ Phân tích: {selected_n}</h4>
-                <p style='color:#94A3B8; font-size:13px; margin-bottom: 0px;'>Chi tiết lịch sử giá và chỉ số rủi ro của khu vực bạn vừa chọn.</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-            n_stats = valid_neighs[valid_neighs['Khu Vực'] == selected_n].iloc[0]
-            boro_of_n = n_stats['Quận']
-            n_gd = n_stats['Số GD']
-            n_thang = n_stats['Số tháng']
-            n_r2 = n_stats['R2']
-    
-            vol_score = min((n_gd / 500) * 40, 40)
-            time_score = min((n_thang / 60) * 30, 30)
-            trend_score = min(n_r2 * 30, 30)
-            total_score = vol_score + time_score + trend_score
-    
-            if total_score >= 80:
-                rating, stars = "Cực kỳ đáng tin", ""
-            elif total_score >= 60:
-                rating, stars = "Khá đáng tin", ""
-            else:
-                rating, stars = "Độ tin cậy trung bình", ""
-        
-            fig_explore, pct_explore = plot_single_neighborhood(boro_of_n, selected_n, f"Lịch sử giá chi tiết: {selected_n}", C_BLUE, height=220)
-            st.plotly_chart(fig_explore, width='stretch')
-            
-            st.markdown(f"""
-            <div style='background-color:rgba(15, 23, 42, 0.04); border-left:4px solid #3B82F6; padding:10px 15px; border-radius:8px; margin-bottom: 8px; margin-top: -15px;'>
-                <div style='display:flex; justify-content:space-between; align-items:center;'>
-                    <div>
-                        <span style='font-size:12px; color:#64748b; font-weight:bold; text-transform:uppercase;'> Chỉ số Tin cậy Dữ liệu</span>
-                        <span style='font-size:20px; font-weight:800; color:#0f172a; margin-left:8px;'>{total_score:.0f}/100</span>
-                        <span style='font-size:13px; margin-left:6px; font-weight:600;'>{rating}</span>
-                    </div>
-                    <div style='font-size:16px;'>{stars}</div>
-                </div>
-                <div style='margin-top:4px; font-size:13px; color:#475569;'>
-                    Dựa trên <b>{n_gd} giao dịch</b> rải đều trong <b>{n_thang} tháng</b>.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-             st.markdown("""
-                <div style='text-align:center; padding: 40px 20px; border: 2px dashed #cbd5e1; border-radius: 12px; margin-top: 20px;'>
-                    <div style='color:#64748b; font-size:18px; font-weight:bold; margin-bottom:10px;'>Không đủ dữ liệu</div>
-                    <p style='color:#94a3b8; font-size:15px;'>Hệ thống không tìm thấy khu vực nào đủ điều kiện trong bộ lọc hiện tại.</p>
-                </div>
-                """, unsafe_allow_html=True)
-    except Exception as e:
-        st.warning(f"Lỗi khi tải biểu đồ khu vực: {e}")
 
