@@ -1682,23 +1682,83 @@ with tab4:
                                     margin=dict(r=45, l=10, t=35, b=20))
                 st.plotly_chart(fig_i, width='stretch')
         with ci2:
-            section_q("Độ chính xác: Giá AI dự báo vs Giá thực tế","Phân bố các giao dịch kiểm thử và đường chuẩn lý tưởng y = x")
+            section_q("Độ chính xác: Giá AI dự báo vs Giá thực tế",
+                      "Phân bố các giao dịch kiểm thử và đường chuẩn lý tưởng y = x")
             if df_pred is not None:
-                pp4 = df_pred.sample(n=min(1200, len(df_pred)), random_state=42)
-                fig_av4 = px.scatter(pp4, x='Actual', y='Predicted', opacity=0.45,
-                                     color_discrete_sequence=['#4f46e5'],
-                                     labels={'Actual':'Giá thực tế ($)','Predicted':'Giá AI dự báo ($)'},
-                                     title='Giá AI dự báo vs Giá thực tế (CatBoost Regressor)')
-                vm4 = min(max(np.percentile(df_pred['Actual'], 99.5), np.percentile(df_pred['Predicted'], 99.5)), 12000000)
-                fig_av4.add_trace(go.Scatter(x=[0, vm4], y=[0, vm4], mode='lines',
-                                             name='Đường chuẩn lý tưởng (y = x)',
-                                             line=dict(color='#dc2626', dash='dash', width=2)))
-                clayout(fig_av4, h=400, t=40, b=10, leg=True)
+                pp4 = df_pred.sample(n=min(5000, len(df_pred)), random_state=42)
+                max_view = 2800000
+
+                fig_av4 = go.Figure()
+                
+                # Scatter points: Bất động sản kiểm thử
+                fig_av4.add_trace(go.Scatter(
+                    x=pp4['Actual'],
+                    y=pp4['Predicted'],
+                    mode='markers',
+                    name='Bất động sản kiểm thử',
+                    marker=dict(color='#0284c7', size=5, opacity=0.35),
+                    hovertemplate="Giá thực tế: $%{x:,.0f}<br>Giá AI dự báo: $%{y:,.0f}<extra></extra>"
+                ))
+                
+                # Ideal Line: Đường chuẩn lý tưởng (y = x)
+                fig_av4.add_trace(go.Scatter(
+                    x=[0, max_view],
+                    y=[0, max_view],
+                    mode='lines',
+                    name='Đường chuẩn lý tưởng (y = x)',
+                    line=dict(color='#dc2626', width=2, dash='dash'),
+                    hoverinfo='skip'
+                ))
+
+                tick_vals = [0, 500000, 1000000, 1500000, 2000000, 2500000]
+                tick_text = ['$0.0M', '$0.5M', '$1.0M', '$1.5M', '$2.0M', '$2.5M']
+
                 fig_av4.update_layout(
-                    title_font=dict(size=13, color='#374151'),
-                    xaxis=dict(tickformat='$,.0f', automargin=True, range=[0, vm4], title='Giá thực tế ($)'),
-                    yaxis=dict(tickformat='$,.0f', automargin=True, range=[0, vm4], title='Giá AI dự báo ($)'),
-                    legend=dict(font_size=11, orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+                    title=dict(
+                        text='<b>CatBoost Regressor: Actual vs Predicted Price</b><br><span style="font-size:12px;font-weight:600;color:#475569;">(R² = 0.5616 | MAPE = 43.53%)</span>',
+                        x=0.5,
+                        xanchor='center',
+                        font=dict(size=14, color='#0f172a')
+                    ),
+                    xaxis=dict(
+                        title=dict(text='<b>Giá thực tế (Actual Price)</b>', font=dict(size=11, color='#1e293b')),
+                        range=[0, max_view],
+                        tickvals=tick_vals,
+                        ticktext=tick_text,
+                        showgrid=True,
+                        gridcolor='rgba(226, 232, 240, 0.8)',
+                        griddash='dot',
+                        showline=True,
+                        linewidth=1,
+                        linecolor='#94a3b8',
+                        mirror=True
+                    ),
+                    yaxis=dict(
+                        title=dict(text='<b>Giá AI dự báo (Predicted Price)</b>', font=dict(size=11, color='#1e293b')),
+                        range=[0, max_view],
+                        tickvals=tick_vals,
+                        ticktext=tick_text,
+                        showgrid=True,
+                        gridcolor='rgba(226, 232, 240, 0.8)',
+                        griddash='dot',
+                        showline=True,
+                        linewidth=1,
+                        linecolor='#94a3b8',
+                        mirror=True
+                    ),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    height=430,
+                    margin=dict(l=20, r=20, t=55, b=20),
+                    legend=dict(
+                        x=0.03,
+                        y=0.97,
+                        bgcolor='rgba(255, 255, 255, 0.92)',
+                        bordercolor='#cbd5e1',
+                        borderwidth=1,
+                        font=dict(size=10, color='#1e293b')
+                    )
+                )
                 st.plotly_chart(fig_av4, width='stretch')
 
         divider()
