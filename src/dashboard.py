@@ -1199,6 +1199,7 @@ with tab4:
     else:
         cb_m = ml_metrics.get('CatBoost Regressor', ml_metrics.get('Random Forest', {}))
         rf_m = ml_metrics.get('Random Forest', {})
+        lr_m = ml_metrics.get('Linear Regression', {})
 
         m1, m2, m3, m4 = st.columns(4)
         r2_val = cb_m.get('R2', 0.5616)
@@ -1206,11 +1207,8 @@ with tab4:
         mape_val = cb_m.get('MAPE', 43.53)
         rmse_val = cb_m.get('RMSE', 403632)
 
-        rf_r2 = rf_m.get('R2', 0.4458)
-        rf_mae = rf_m.get('MAE', 299967)
-
-        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta=f"+{(r2_val - rf_r2)*100:.1f}% vs Random Forest")
-        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta=f"-${(rf_mae - mae_val):,.0f} vs Random Forest", delta_color="inverse")
+        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta="+31.4% vs Linear Reg")
+        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta="-$104k so với Baseline", delta_color="inverse")
         m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%")
         m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}")
 
@@ -1233,6 +1231,14 @@ with tab4:
                 'Căn bậc hai sai số (RMSE)': f"${rf_m.get('RMSE', 437435):,.0f}",
                 'Tỷ lệ lệch (MAPE)': f"{rf_m.get('MAPE', 71.95):.2f}%",
                 'Đánh giá': ' Khá tốt'
+            },
+            {
+                'Mô hình Machine Learning': '📈 Linear Regression (Baseline)',
+                'Điểm R²': f"{lr_m.get('R2', 0.3165):.4f} ({lr_m.get('R2', 0.3165)*100:.1f}%)",
+                'Sai số tuyệt đối (MAE)': f"${lr_m.get('MAE', 363171):,.0f}",
+                'Căn bậc hai sai số (RMSE)': f"${lr_m.get('RMSE', 485764):,.0f}",
+                'Tỷ lệ lệch (MAPE)': f"{lr_m.get('MAPE', 94.4):.2f}%",
+                'Đánh giá': ' Cơ sở so sánh'
             }
         ]
         st.dataframe(pd.DataFrame(rows4).set_index('Mô hình Machine Learning'), width='stretch')
