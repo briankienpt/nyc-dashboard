@@ -1519,6 +1519,8 @@ with tab4:
             }
         ]
         df_comp = pd.DataFrame(comp_rows)
+        df_comp.index = range(1, len(df_comp) + 1)
+        df_comp.index.name = "STT"
         st.dataframe(df_comp, width='stretch', hide_index=False)
 
         divider()
@@ -1662,6 +1664,7 @@ with tab4:
             n_samples = min(100, len(comp_df))
             sample_indices = np.linspace(0, len(comp_df) - 1, n_samples).astype(int)
             plot_100 = comp_df.iloc[sample_indices].reset_index(drop=True)
+            plot_100.index = range(1, len(plot_100) + 1)
 
             fig_100 = go.Figure()
             # Giá thực tế: Blue solid line with round dots
