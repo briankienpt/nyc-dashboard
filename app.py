@@ -3,22 +3,17 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-import pydeck as pdk
 import json
 import os
 import zlib
-import psycopg2
-import urllib.parse
-from dotenv import load_dotenv
-load_dotenv()
 
 # ════════════════════════════════════════════════════════════
 # CẤU HÌNH TRANG
 # ════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="[PostgreSQL] Báo cáo Phân tích Thị trường Bất động sản NYC 2025 - 2026",
+    page_title="Báo cáo Phân tích Thị trường Bất động sản NYC 2025 - 2026",
     layout="wide",
-    page_icon="️",
+    page_icon="🏙️",
     initial_sidebar_state="expanded",
 )
 
@@ -86,16 +81,6 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; font-weight: 500;
     border-radius: 6px !important;
 }
 [data-testid="stSidebar"] .stMultiSelect [data-baseweb="tag"] span { color: #ffffff !important; font-weight: 700 !important; }
-div[data-baseweb="select"] {
-    border: 2px solid #2563eb !important;
-    border-radius: 6px !important;
-    background-color: #ffffff !important;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15) !important;
-}
-div[data-baseweb="select"] > div {
-    border: none !important;
-    background-color: transparent !important;
-}
 [data-testid="stSidebar"] .stButton button {
     background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
     color: white !important;
@@ -150,7 +135,7 @@ div[data-baseweb="select"] > div {
 # HẰNG SỐ, TỌA ĐỘ BẢN ĐỒ & BẢN MÀU
 # ════════════════════════════════════════════════════════════
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = BASE_DIR
+ROOT_DIR = os.path.dirname(BASE_DIR)
 BOROUGH_MAP   = {1:'Manhattan', 2:'Bronx', 3:'Brooklyn', 4:'Queens', 5:'Staten Island'}
 BOROUGH_ORDER = ['Manhattan', 'Brooklyn', 'Queens', 'Bronx', 'Staten Island']
 BOROUGH_COLORS = {
@@ -171,14 +156,14 @@ MONTH_FULL  = {1:'Tháng 1',2:'Tháng 2',3:'Tháng 3',4:'Tháng 4',
 FEATURE_LABELS = {
     'gross_sqft':'Diện tích tổng (sqft)', 'building_age':'Tuổi công trình (năm)',
     'land_sqft':'Diện tích đất (sqft)',   'pop_density':'Mật độ dân số (/km²)',
-    'total_units':'Số căn trong tòa',
+    'amenity_score':'Điểm tiện ích (0–10)','total_units':'Số căn trong tòa',
     'gdp_local':'GDP địa phương (%)',      'avg_income':'Thu nhập bình quân ($)',
     'dist_center':'KC đến trung tâm (km)',
 }
 REQUIRED_COLS = [
     'borough','neighborhood','building_type','gross_sqft','land_sqft',
     'sale_price','sale_year','sale_date','building_age','total_units',
-    'pop_density','avg_income','gdp_local','dist_center','amenity_score'
+    'pop_density','avg_income','gdp_local','dist_center','amenity_score',
 ]
 
 # Tọa độ địa lý NYC cho bản đồ Nhiệt (Hotspot Heatmap)
@@ -300,238 +285,36 @@ def get_neighborhood_coords(neighborhood, borough_name):
 # ════════════════════════════════════════════════════════════
 # HÀM DỮ LIỆU
 # ════════════════════════════════════════════════════════════
-def _get_cache_mtime():
-    """Lấy modification time của DB và DATA.csv để làm cache-key. Khi nạp dữ liệu mới → cache tự động làm mới."""
-    try:
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'warehouse', 'nyc_warehouse.db')
-        data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'data clean', 'DATA.csv')
-        t_db = os.path.getmtime(db_path) if os.path.exists(db_path) else 0
-        t_data = os.path.getmtime(data_path) if os.path.exists(data_path) else 0
-        return max(t_db, t_data)
-    except:
-        return 0
-
 @st.cache_data
-def load_data(query=None, cache_mtime=None):
-    # Cache tự động invalidate khi cache_mtime thay đổi
-
-
-    """Đọc dữ liệu từ SQLite Data Warehouse local."""
-    try:
-        import sqlite3
-        import os
-        import zipfile
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'warehouse', 'nyc_warehouse.db')
-        zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'warehouse', 'nyc_warehouse.zip')
-        
-        # Tự động giải nén nếu chưa có db hoặc zip mới hơn
-        if os.path.exists(zip_path):
-            need_extract = True
-            if os.path.exists(db_path):
-                # Kiểm tra nếu file zip mới hơn file db thì giải nén đè lên
-                if os.path.getmtime(zip_path) <= os.path.getmtime(db_path):
-                    need_extract = False
-                    # Kiểm tra DB có bị hỏng do race condition trước đó không
-                    try:
-                        conn_test = sqlite3.connect(db_path)
-                        conn_test.execute("SELECT 1 FROM fact_sales LIMIT 1")
-                        conn_test.close()
-                    except sqlite3.DatabaseError:
-                        need_extract = True
-            
-            if need_extract:
-                try:
-                    import filelock
-                    lock_path = db_path + ".lock"
-                    with filelock.FileLock(lock_path, timeout=60):
-                        do_extract = True
-                        if os.path.exists(db_path):
-                            try:
-                                c2 = sqlite3.connect(db_path)
-                                c2.execute("SELECT 1 FROM fact_sales LIMIT 1")
-                                c2.close()
-                                if os.path.getmtime(zip_path) <= os.path.getmtime(db_path):
-                                    do_extract = False
-                            except sqlite3.DatabaseError:
-                                do_extract = True
-                        
-                        if do_extract:
-                            try:
-                                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                                    zip_ref.extractall(os.path.dirname(db_path))
-                            except zipfile.BadZipFile as e:
-                                if not os.path.exists(db_path):
-                                    raise Exception(f"File zip bị lỗi (có thể do Git LFS) và không tìm thấy file db: {e}")
-                except ImportError:
-                    try:
-                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                            zip_ref.extractall(os.path.dirname(db_path))
-                    except zipfile.BadZipFile as e:
-                        if not os.path.exists(db_path):
-                            raise Exception(f"File zip bị lỗi (có thể do Git LFS) và không tìm thấy file db: {e}")
-                
-        conn = sqlite3.connect(db_path)
-        
-        if query:
-            df = pd.read_sql_query(query, conn)
-            conn.close()
-            return df
-            
-        engine = conn
-        _chunks = pd.read_sql("""
-            SELECT 
-                b.borough_id AS borough,
-                b.borough_name,
-                n.neighborhood_name as neighborhood,
-                p.building_class_category,
-                p.building_category,
-                p.building_type,
-                p.building_class_present,
-                p.tax_class_present,
-                p.gross_sqft,
-                p.land_sqft,
-                p.building_age,
-                p.total_units,
-                p.is_residential,
-                l.block,
-                l.lot,
-                f.sale_price,
-                f.price_per_sqft,
-                f.price_per_sqft_real,
-                f.sale_date,
-                f.sale_year,
-                f.sale_month,
-                f.tax_class_sale,
-                f.building_class_sale,
-                s.pop_density,
-                s.avg_income,
-                s.gdp_local,
-                s.dist_center,
-                n.amenity_score
-            FROM fact_sales f
-            JOIN dim_location       l ON f.location_id    = l.location_id
-            JOIN dim_neighborhood   n ON l.neighborhood_id = n.neighborhood_id
-            JOIN dim_borough        b ON n.borough_id      = b.borough_id
-            JOIN dim_property       p ON f.property_id     = p.property_id
-            JOIN dim_social_metrics s ON f.social_id       = s.social_id
-        """, engine, chunksize=50000)
-        
-        processed_chunks = []
-        num_cols = ['gross_sqft', 'land_sqft', 'building_age', 'sale_year', 'avg_income', 'dist_center', 'pop_density']
-        
-        for chunk in _chunks:
-            # Lọc bớt dòng rác ngay từ đầu để giảm số lượng
-            chunk['sale_price'] = pd.to_numeric(chunk['sale_price'], errors='coerce')
-            chunk = chunk[chunk['sale_price'] > 10_000].copy()
-            
-            # Chuẩn hoá số
-            for c in num_cols:
-                if c in chunk.columns:
-                    chunk[c] = pd.to_numeric(chunk[c], errors='coerce', downcast='float')
-            
-            chunk.loc[chunk['gross_sqft'] <= 0, 'gross_sqft'] = np.nan
-            chunk.loc[chunk['land_sqft']  <= 0, 'land_sqft']  = np.nan
-            
-            # Use the real price per sqft from DB if available, fallback to manual calc
-            if 'price_per_sqft_real' in chunk.columns:
-                chunk['price_per_sqft'] = chunk['price_per_sqft_real']
-            else:
-                chunk['price_per_sqft'] = np.where(chunk['gross_sqft'].notna(),
-                                                  chunk['sale_price'] / chunk['gross_sqft'], np.nan)
-
-            
-            # Xử lý ngày tháng ngay trong chunk để giải phóng text (hỗ trợ cả định dạng DD/MM/YYYY và YYYY-MM-DD)
-            chunk['sale_date_parsed'] = pd.to_datetime(chunk['sale_date'], dayfirst=True, errors='coerce')
-            chunk['sale_month']       = chunk['sale_date_parsed'].dt.month.fillna(0).astype('int16')
-            
-            # Khôi phục building_category và building_type từ building_class_category (bị thiếu trong SQLite)
-            if 'building_class_category' in chunk.columns:
-                split_cols = chunk['building_class_category'].astype(str).str.split('-', n=1, expand=True)
-                chunk['building_category'] = split_cols[0].str.strip()
-                if split_cols.shape[1] > 1:
-                    chunk['building_type'] = split_cols[1].str.strip()
-                    # Điền missing type bằng category nếu split không ra 2 phần
-                    chunk['building_type'] = chunk['building_type'].fillna(chunk['building_category'])
-                else:
-                    chunk['building_type'] = chunk['building_category']
-            
-            # Ép kiểu int/float để giảm dung lượng
-            for c in chunk.select_dtypes(include=['int64', 'float64']).columns:
-                if chunk[c].dtype == 'int64':
-                    chunk[c] = pd.to_numeric(chunk[c], downcast='integer')
-                else:
-                    chunk[c] = pd.to_numeric(chunk[c], downcast='float')
-                    
-            processed_chunks.append(chunk)
-            
-        df = pd.concat(processed_chunks, ignore_index=True)
-        engine.close()
-    except Exception as e:
-        return None, f"Lỗi đọc SQLite: {e}"
-
+def load_data():
+    path = os.path.join(ROOT_DIR, 'data', 'data clean', 'DATA.csv')
+    if not os.path.exists(path):
+        return None, "Không tìm thấy file DATA.csv"
+    df = pd.read_csv(path)
     missing = [c for c in REQUIRED_COLS if c not in df.columns]
     if missing:
-        return None, f"Thiếu cột sau JOIN: {', '.join(missing)}"
-
-    # Chuyển đổi chuỗi sang category một lần sau khi concat (tiết kiệm 90% RAM)
-    for c in df.select_dtypes(include=['object', 'string']).columns:
-        if df[c].nunique() < 1000:
-            df[c] = df[c].astype('category')
-            
+        return None, f"Thiếu cột: {', '.join(missing)}"
+    df['borough_name']      = df['borough'].map(BOROUGH_MAP)
+    df['sale_price']        = pd.to_numeric(df['sale_price'],   errors='coerce')
+    df['gross_sqft']        = pd.to_numeric(df['gross_sqft'],   errors='coerce')
+    df['land_sqft']         = pd.to_numeric(df['land_sqft'],    errors='coerce')
+    df['building_age']      = pd.to_numeric(df['building_age'], errors='coerce')
+    df['sale_year']         = pd.to_numeric(df['sale_year'],    errors='coerce')
+    df['avg_income']        = pd.to_numeric(df['avg_income'],   errors='coerce')
+    df['amenity_score']     = pd.to_numeric(df['amenity_score'],errors='coerce')
+    df['dist_center']       = pd.to_numeric(df['dist_center'],  errors='coerce')
+    df['pop_density']       = pd.to_numeric(df['pop_density'],  errors='coerce')
+    df = df[df['sale_price'] > 10_000].copy()
+    df.loc[df['gross_sqft'] <= 0, 'gross_sqft'] = np.nan
+    df.loc[df['land_sqft']  <= 0, 'land_sqft']  = np.nan
+    df['price_per_sqft']    = np.where(df['gross_sqft'].notna(),
+                                       df['sale_price'] / df['gross_sqft'], np.nan)
+    df['sale_date_parsed']  = pd.to_datetime(df['sale_date'], dayfirst=True, errors='coerce')
+    df['sale_month']        = df['sale_date_parsed'].dt.month
     return df, None
 
 @st.cache_data
-def get_flipping_stats(df_in):
-    # Tạo mã định danh duy nhất cho từng lô đất
-    cols = ['borough_name', 'block', 'lot', 'sale_date', 'sale_date_parsed', 'sale_price', 'neighborhood']
-    df_f = df_in.loc[:, cols].copy()
-    df_f['property_id'] = df_f['borough_name'].astype(str) + '-' + df_f['block'].astype(str) + '-' + df_f['lot'].astype(str)
-    
-    # Sắp xếp theo ID và ngày bán
-    df_f = df_f.sort_values(by=['property_id', 'sale_date_parsed'])
-    
-    # Dùng shift() để so sánh với giao dịch liền trước
-    df_f['prev_prop'] = df_f['property_id'].shift(1)
-    df_f['buy_date'] = df_f['sale_date_parsed'].shift(1)
-    df_f['buy_price'] = df_f['sale_price'].shift(1)
-
-    # Chỉ giữ lại những giao dịch là lần bán thứ 2 trở lên của cùng 1 property
-    flips = df_f[df_f['property_id'] == df_f['prev_prop']].copy()
-    
-    if len(flips) == 0:
-        return None, None, None
-
-    # Tính toán các chỉ số
-    flips['days_held'] = (flips['sale_date_parsed'] - flips['buy_date']).dt.days
-    flips['profit'] = flips['sale_price'] - flips['buy_price']
-    flips['roi'] = np.where(flips['buy_price'] > 0, flips['profit'] / flips['buy_price'], 0)
-
-    # Lọc điều kiện lướt sóng: giữ nhà từ 1 ngày đến 3 năm (1095 ngày)
-    df_res = flips[(flips['days_held'] >= 1) & (flips['days_held'] <= 1095)].copy()
-    
-    if len(df_res) == 0:
-        return None, None, None
-
-    neigh_stats = df_res.groupby(['borough_name', 'neighborhood']).agg(
-        num_flips=('neighborhood', 'count'),
-        avg_profit=('profit', 'mean'),
-        avg_roi=('roi', 'mean'),
-        avg_days=('days_held', 'mean')
-    ).reset_index()
-    
-    neigh_stats = neigh_stats[neigh_stats['num_flips'] >= 2]
-    
-    # Khu vực định cư (Ít lướt sóng)
-    all_sales = df_f.groupby('neighborhood')['property_id'].count().reset_index(name='total_sales')
-    long_term = pd.merge(all_sales, neigh_stats, on='neighborhood', how='left')
-    long_term['num_flips'] = long_term['num_flips'].fillna(0)
-    long_term['flip_rate'] = (long_term['num_flips'] / long_term['total_sales']) * 100
-    long_term = long_term[long_term['total_sales'] >= 30]
-
-    return df_res, neigh_stats, long_term
-
-@st.cache_data
-def load_ml_data(mtime=None):
+def load_ml_data():
     paths = {'pred': os.path.join(ROOT_DIR, 'output', 'ml_predictions.csv'),
              'imp':  os.path.join(ROOT_DIR, 'output', 'ml_importance.csv'),
              'met':  os.path.join(ROOT_DIR, 'output', 'ml_metrics.json')}
@@ -578,7 +361,7 @@ def render_factor_summary_matrix(df_in):
     factors = [
         ('gross_sqft', 'Diện tích công trình (gross_sqft)', 'Quy mô không gian sử dụng; biến số quan trọng hàng đầu định giá tổng tài sản.'),
         ('avg_income', 'Thu nhập khu vực (avg_income)', 'Mặt bằng thu nhập cư dân; đại diện cho sức mua và mức độ đắt đỏ của vùng.'),
-
+        ('amenity_score', 'Điểm tiện ích (amenity_score)', 'Chất lượng tiện ích kết nối xung quanh (giao thông, trường học, dịch vụ).'),
         ('dist_center', 'KC đến trung tâm (dist_center)', 'Khoảng cách địa lý tới trung tâm tài chính Manhattan (càng xa giá giảm).'),
         ('pop_density', 'Mật độ dân số (pop_density)', 'Mật độ dân cư sinh sống; phản ánh độ sầm uất và nhu cầu nhà ở khu vực.'),
         ('building_age', 'Tuổi công trình (building_age)', 'Số năm công trình đã vận hành (công trình cũ chịu khấu hao tài sản).'),
@@ -593,13 +376,13 @@ def render_factor_summary_matrix(df_in):
                 r = valid['sale_price'].corr(valid[col])
                 abs_r = abs(r)
                 if abs_r >= 0.50:
-                    level = " RẤT MẠNH"
+                    level = "🚀 RẤT MẠNH"
                 elif abs_r >= 0.35:
-                    level = " MẠNH"
+                    level = "📈 MẠNH"
                 elif abs_r >= 0.15:
-                    level = "️ TRUNG BÌNH"
+                    level = "⚖️ TRUNG BÌNH"
                 else:
-                    level = " YẾU"
+                    level = "📉 YẾU"
                 
                 direction = "Thuận (+)" if r > 0 else "Nghịch (-)"
                 rows.append({
@@ -647,18 +430,9 @@ def render_factor_summary_matrix(df_in):
 # ════════════════════════════════════════════════════════════
 # LOAD DỮ LIỆU
 # ════════════════════════════════════════════════════════════
-df_raw, load_err = load_data(cache_mtime=_get_cache_mtime())
-
-if df_raw is not None:
-    # Safely filter for 2025-2026 after all data is loaded
-    df_raw['sale_year'] = pd.to_numeric(df_raw['sale_year'], errors='coerce')
-    df_raw = df_raw[df_raw['sale_year'] >= 2025].reset_index(drop=True)
-    if df_raw.empty:
-        df_raw = None
-        load_err = "Không có dữ liệu nào khớp với năm 2025 trở đi."
-
+df_raw, load_err = load_data()
 if df_raw is None:
-    st.error(f"️ **Lỗi:** {load_err}")
+    st.error(f"⚠️ **Lỗi:** {load_err}")
     st.info("Hãy chạy `main.py` trước.")
     st.stop()
 
@@ -668,26 +442,26 @@ if df_raw is None:
 with st.sidebar:
     st.markdown("""
     <div style='text-align:center;padding:20px 0 10px'>
-        <div style='font-size:36px'>️</div>
+        <div style='font-size:36px'>🏙️</div>
         <div style='font-size:14px;font-weight:700;color:#f1f5f9;margin-top:6px'>Bộ lọc dữ liệu</div>
         <div style='font-size:11px;color:#64748b;margin-top:2px'>NYC Real Estate Analytics</div>
     </div>
     <hr style='border-color:#1e3a5f;margin:0 0 14px'>
     """, unsafe_allow_html=True)
     all_b = [b for b in BOROUGH_ORDER if b in df_raw['borough_name'].dropna().unique()]
-    selected_boroughs = st.multiselect(" Quận (Borough)", options=all_b, default=all_b)
+    selected_boroughs = st.multiselect("📍 Quận (Borough)", options=all_b, default=all_b)
     avail_years = sorted(df_raw['sale_year'].dropna().astype(int).unique().tolist())
-    year_range  = st.select_slider(" Năm giao dịch", options=avail_years,
+    year_range  = st.select_slider("📅 Năm giao dịch", options=avail_years,
                                    value=(min(avail_years), max(avail_years)))
     p5  = float(df_raw['sale_price'].quantile(0.05))
     p95 = float(df_raw['sale_price'].quantile(0.95))
-    price_range = st.slider(" Khoảng giá ($)",
+    price_range = st.slider("💰 Khoảng giá ($)",
                             min_value=float(df_raw['sale_price'].min()),
                             max_value=float(df_raw['sale_price'].max()),
                             value=(p5, p95), format="$%.0f",
                             help="Mặc định p5–p95 để loại bỏ outlier.")
     st.markdown('<hr style="border-color:#1e3a5f;margin:14px 0 10px">', unsafe_allow_html=True)
-    if st.button(" Đặt lại bộ lọc", width='stretch'):
+    if st.button("🔄 Đặt lại bộ lọc", width='stretch'):
         st.rerun()
     st.markdown(f"""
     <div style='text-align:center;margin-top:10px;color:#475569;font-size:11px'>
@@ -698,15 +472,15 @@ with st.sidebar:
 # ÁP DỤNG BỘ LỌC
 # ════════════════════════════════════════════════════════════
 if not selected_boroughs:
-    st.warning("️ Chưa chọn quận nào. Hãy chọn ít nhất một quận trong bộ lọc bên trái.")
+    st.warning("⚠️ Chưa chọn quận nào. Hãy chọn ít nhất một quận trong bộ lọc bên trái.")
     st.stop()
 df = apply_filters(df_raw, selected_boroughs, year_range, price_range)
 if len(df) == 0:
-    st.warning("️ **Không có dữ liệu phù hợp.** Hãy mở rộng bộ lọc hoặc nhấn Đặt lại.")
+    st.warning("⚠️ **Không có dữ liệu phù hợp.** Hãy mở rộng bộ lọc hoặc nhấn Đặt lại.")
     st.stop()
 
 df_sample = df.sample(n=min(3000, len(df)), random_state=42)
-df_ppsf   = df.loc[df['price_per_sqft'].notna() & (df['price_per_sqft'] < 5000), ['price_per_sqft']]
+df_ppsf   = df[df['price_per_sqft'].notna() & (df['price_per_sqft'] < 5000)].copy()
 
 # ════════════════════════════════════════════════════════════
 # TIÊU ĐỀ
@@ -715,12 +489,12 @@ h1, h2 = st.columns([4, 1])
 with h1:
     st.markdown("""
     <h1 style='font-size:24px;font-weight:800;color:#0f172a;margin:0'>
-    ️ BÁO CÁO PHÂN TÍCH THỊ TRƯỜNG BẤT ĐỘNG SẢN NEW YORK GIAI ĐOẠN 2025 - 2026
+    🏙️ BÁO CÁO PHÂN TÍCH THỊ TRƯỜNG BẤT ĐỘNG SẢN NEW YORK GIAI ĐOẠN 2025 - 2026
     </h1>""", unsafe_allow_html=True)
 with h2:
     st.markdown(f"""
     <div style='text-align:right;padding-top:6px'>
-        <span class="badge"> {len(df):,} giao dịch</span><br>
+        <span class="badge">✓ {len(df):,} giao dịch</span><br>
         <span style='font-size:11px;color:#94a3b8'>{len(selected_boroughs)} quận · {year_range[0]}–{year_range[1]}</span>
     </div>""", unsafe_allow_html=True)
 st.markdown("<div style='margin-bottom:18px'></div>", unsafe_allow_html=True)
@@ -728,24 +502,13 @@ st.markdown("<div style='margin-bottom:18px'></div>", unsafe_allow_html=True)
 # ════════════════════════════════════════════════════════════
 # TABS
 # ════════════════════════════════════════════════════════════
-tab0, tab1, tab2, tab4, tab_macro, tab_micro = st.tabs([
-    "  Tổng quan",
-    "️  Phân tích khu vực",
-    "  Yếu tố quyết định giá",
-    "  Dự báo & Mô hình ML",
-    "  Phân tích Đầu tư BĐS",
-    "  Tra cứu BĐS & Tiện ích"
+tab0, tab1, tab2, tab3, tab4 = st.tabs([
+    "🏙️  Tổng quan",
+    "🗺️  Phân tích khu vực",
+    "📐  Yếu tố quyết định giá",
+    "📅  Biến động theo thời gian",
+    "🤖  Dự báo & Mô hình ML",
 ])
-
-with tab_macro:
-    st.markdown("### 🏛️ Đánh giá Tiềm năng Khu vực")
-    st.info("Hệ thống dựa vào thuật toán và dữ liệu lịch sử để phân tích các khu vực (Neighborhoods) có đặc tính tăng trưởng hoặc thanh khoản cao nhất.")
-    tab_adv, tab_evid = st.tabs(["🎯 Gợi ý Đầu tư", "📊 Dữ liệu Lịch sử"])
-
-with tab_micro:
-    st.markdown("### 🏡 Tra cứu Bất động sản")
-    tab_search, tab7 = st.tabs(["🔍 Tìm kiếm Bất động sản", "📊 Phân tích Tiện ích"])
-
 
 # ════════════════════════════════════════════════════════════
 # TAB 0 — TỔNG QUAN
@@ -755,7 +518,7 @@ with tab0:
     <div style='background:linear-gradient(135deg,#4338ca,#6366f1,#818cf8);border-radius:14px;
     padding:18px 24px;color:#fff;margin-bottom:22px;
     box-shadow:0 6px 24px rgba(99,102,241,0.35)'>
-    <b style='font-size:15px;letter-spacing:-0.3px'>️ Thị trường đang ở đâu và quy mô như thế nào?</b><br>
+    <b style='font-size:15px;letter-spacing:-0.3px'>🏙️ Thị trường đang ở đâu và quy mô như thế nào?</b><br>
     <span style='font-size:12px;opacity:0.88'>Tổng quan về quy mô, mặt bằng giá và cơ cấu thị trường bất động sản NYC trong bộ lọc hiện tại.</span>
     </div>
     """, unsafe_allow_html=True)
@@ -798,7 +561,6 @@ with tab0:
     with ca:
         fig = px.bar(bor_cnt.sort_values('Giao dịch'), x='Giao dịch', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS, text='Giao dịch',
-                     labels={'Borough':'Quận', 'Giao dịch':'Số giao dịch'},
                      title="Số giao dịch theo quận")
         fig.update_traces(texttemplate='%{text:,}', textposition='auto')
         clayout(fig, h=280, t=40, r=80)
@@ -809,7 +571,6 @@ with tab0:
         fig = px.bar(bor_med.sort_values('Giá trung vị'), x='Giá trung vị', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS,
                      text=bor_med.sort_values('Giá trung vị')['Giá trung vị'].apply(fmt_M),
-                     labels={'Borough':'Quận', 'Giá trung vị':'Giá trung vị ($)'},
                      title="Giá trung vị theo quận ($)")
         fig.update_traces(textposition='auto')
         clayout(fig, h=280, t=40, r=100)
@@ -839,8 +600,7 @@ with tab0:
     with cd:
         df_bt0 = df[df['building_type'].isin(top6_bt)]
         med_bt0 = df_bt0.groupby('building_type')['sale_price'].median().sort_values(ascending=False)
-        df_bt0_sample = df_bt0.sample(n=min(10000, len(df_bt0)), random_state=42)
-        fig = px.box(df_bt0_sample, x='building_type', y='sale_price',
+        fig = px.box(df_bt0, x='building_type', y='sale_price',
                      color='building_type',
                      color_discrete_sequence=[C_BLUE,C_SKY,C_ORANGE,C_GREEN,'#8b5cf6',C_GRAY],
                      points=False, labels={'building_type':'Loại hình BĐS','sale_price':'Giá bán ($)'},
@@ -858,6 +618,16 @@ with tab0:
     rat0   = top_b0['Giá trung vị'] / low_b0['Giá trung vị']
     top_bt0= df['building_type'].value_counts().index[0]
     pct_bt0= df['building_type'].value_counts().iloc[0] / len(df) * 100
+    insight_box(f"""
+    <b>📌 Những điều quan trọng nhất từ tổng quan:</b><br>
+    • <b>{top_b0['Borough']}</b> dẫn đầu về giá trung vị ({fmt_M(top_b0['Giá trung vị'])}),
+      cao hơn <b>{rat0:.1f}×</b> so với {low_b0['Borough']} ({fmt_M(low_b0['Giá trung vị'])}) —
+      phản ánh phân hóa mạnh giữa các quận.<br>
+    • <b>{pct_bt0:.0f}%</b> giao dịch thuộc loại hình <b>{top_bt0}</b> —
+      thị trường tập trung rõ vào phân khúc này.<br>
+    • Tổng giá trị thị trường: <b>${total_val/1e9:.2f} tỷ USD</b>.
+      Tỷ lệ giao dịch ≥$1M: <b>{pct_1m:.1f}%</b> — thị trường có xu hướng cao cấp.
+    """)
 
     # ── Phân khúc khách hàng ──────────────────────────────────
     divider()
@@ -948,7 +718,7 @@ with tab1:
     <div style='background:linear-gradient(135deg,#0f766e,#0d9488,#34d399);border-radius:14px;
     padding:18px 24px;color:#fff;margin-bottom:22px;
     box-shadow:0 6px 24px rgba(16,185,129,0.3)'>
-    <b style='font-size:15px;letter-spacing:-0.3px'>️ Bản đồ Nhiệt Khu vực & Phân tích Điểm nóng (NYC Hotspot Map)</b><br>
+    <b style='font-size:15px;letter-spacing:-0.3px'>🗺️ Bản đồ Nhiệt Khu vực & Phân tích Điểm nóng (NYC Hotspot Map)</b><br>
     <span style='font-size:12px;opacity:0.88'>Nhận diện điểm nóng giá bán, định giá đơn vị $/sqft và mật độ thanh khoản trên bản đồ tương quan không gian thực.</span>
     </div>
     """, unsafe_allow_html=True)
@@ -967,139 +737,100 @@ with tab1:
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
     # ── YÊU CẦU VỀ BẢN ĐỒ (MAP): BẢN ĐỒ TÔ MÀU KHU VỰC (HEATMAP) ──
-    with st.container(border=True):
-        st.markdown("<h4 style='margin-top:0'>Bộ lọc Bản đồ Nhiệt</h4>", unsafe_allow_html=True)
-        col_f1, col_f2, col_f3 = st.columns(3)
-        
-        with col_f1:
-            hm_boroughs = st.multiselect("Chọn khu vực (Borough)", options=df['borough_name'].unique().tolist(), default=[])
-        
-        avail_neighs = df['neighborhood'].unique().tolist()
-        if hm_boroughs:
-            avail_neighs = df[df['borough_name'].isin(hm_boroughs)]['neighborhood'].unique().tolist()
-            
-        with col_f2:
-            hm_neighs = st.multiselect("Chọn Neighborhood", options=avail_neighs, default=[])
+    section_q(
+        "Bản đồ Nhiệt Khu vực (NYC Hotspot Heatmap)",
+        "Tô màu khu vực thể hiện trực quan điểm nóng (hotspots) về Giá trung vị, Giá/sqft hoặc Mật độ thanh khoản giao dịch."
+    )
 
-        with col_f3:
-            p_min = float(df['sale_price'].min())
-            p_max = float(df['sale_price'].max())
-            hm_price_range = st.slider("Khoảng giá ($)", min_value=p_min, max_value=p_max, value=(p_min, p_max), format="$%.0f", key="hm_price_slider")
+    # Gom nhóm dữ liệu địa lý theo Neighborhood
+    geo_df = df.groupby(['neighborhood', 'borough_name']).agg(
+        med_price=('sale_price', 'median'),
+        med_ppsf=('price_per_sqft', 'median'),
+        n_count=('sale_price', 'count')
+    ).reset_index()
 
-    # Lọc dữ liệu Heatmap
-    df_hm = df.copy()
-    if hm_boroughs:
-        df_hm = df_hm[df_hm['borough_name'].isin(hm_boroughs)]
-    if hm_neighs:
-        df_hm = df_hm[df_hm['neighborhood'].isin(hm_neighs)]
-    
-    df_hm = df_hm[df_hm['sale_price'].between(hm_price_range[0], hm_price_range[1])]
+    # Thêm lat, lon cho từng khu vực
+    coords_list = [get_neighborhood_coords(row['neighborhood'], row['borough_name']) for _, row in geo_df.iterrows()]
+    geo_df['lat'] = [c[0] for c in coords_list]
+    geo_df['lon'] = [c[1] for c in coords_list]
+    geo_df['med_ppsf_clean'] = geo_df['med_ppsf'].fillna(0)
 
-    if len(df_hm) == 0:
-        st.warning("Không có dữ liệu phù hợp với bộ lọc hiện tại.")
+    mc1, mc2, mc3 = st.columns([2, 1, 1])
+    with mc1:
+        map_metric = st.radio(
+            "Hiển thị điểm nóng theo:",
+            options=["🔥 Giá trung vị ($)", "📐 Giá/sqft trung vị ($)", "📊 Mật độ giao dịch (Số căn)"],
+            horizontal=True
+        )
+    with mc2:
+        radius_val = st.slider("Bán kính điểm nhiệt (Radius)", 15, 45, 25)
+    with mc3:
+        zoom_val = st.slider("Độ phóng đại (Zoom)", 9, 13, 10)
+
+    if map_metric == "🔥 Giá trung vị ($)":
+        target_z = 'med_price'
+        color_scale = "Plasma"
+        z_title = "Giá trung vị ($)"
+    elif map_metric == "📐 Giá/sqft trung vị ($)":
+        target_z = 'med_ppsf_clean'
+        color_scale = "Inferno"
+        z_title = "Giá/sqft ($)"
     else:
-        # Cập nhật KPI động
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("Khu vực đang chọn", ", ".join(hm_boroughs) if hm_boroughs else "Toàn bộ NYC")
-        kpi2.metric("Số giao dịch", f"{len(df_hm):,}")
-        kpi3.metric("Giá trung vị", fmt_M(df_hm['sale_price'].median()))
-        hm_ppsf = df_hm.loc[df_hm['price_per_sqft'].notna() & (df_hm['price_per_sqft'] < 5000), 'price_per_sqft']
-        kpi4.metric("Giá/sqft trung vị", f"${hm_ppsf.median():,.0f}" if len(hm_ppsf) > 0 else "N/A")
+        target_z = 'n_count'
+        color_scale = "Viridis"
+        z_title = "Số giao dịch"
 
-        # Tiêu đề động
-        title_map = "Bản đồ Nhiệt Khu vực – Toàn bộ NYC"
-        if hm_boroughs:
-            title_map = f"Bản đồ Nhiệt Khu vực – {', '.join(hm_boroughs)}"
-            
-        section_q(title_map, "Tô màu khu vực thể hiện trực quan điểm nóng (hotspots) về Giá trung vị, Giá/sqft hoặc Mật độ thanh khoản giao dịch.")
+    fig_map = px.density_mapbox(
+        geo_df,
+        lat='lat',
+        lon='lon',
+        z=target_z,
+        radius=radius_val,
+        center=dict(lat=40.7400, lon=-73.9400),
+        zoom=zoom_val,
+        mapbox_style="open-street-map",
+        color_continuous_scale=color_scale,
+        hover_name="neighborhood",
+        hover_data={
+            "borough_name": True,
+            "med_price": ":$,.0f",
+            "med_ppsf_clean": ":$,.0f",
+            "n_count": ":,",
+            "lat": False,
+            "lon": False
+        },
+        labels={
+            "borough_name": "Quận",
+            "med_price": "Giá trung vị",
+            "med_ppsf_clean": "Giá/sqft",
+            "n_count": "Số GD"
+        }
+    )
+    clayout(fig_map, h=520, t=10, b=10, l=10, r=10)
+    fig_map.update_layout(
+        coloraxis_colorbar=dict(title=z_title, len=0.8)
+    )
+    st.plotly_chart(fig_map, width='stretch')
 
-        # Gom nhóm dữ liệu địa lý theo Neighborhood từ df_hm đã lọc
-        geo_df = df_hm.groupby(['neighborhood', 'borough_name']).agg(
-            med_price=('sale_price', 'median'),
-            med_ppsf=('price_per_sqft', 'median'),
-            n_count=('sale_price', 'count')
-        ).reset_index()
+    # Chú giải điểm nóng
+    top_p_geo = geo_df.sort_values('med_price', ascending=False).head(3)
+    top_v_geo = geo_df.sort_values('n_count', ascending=False).head(3)
+    p_spots = ", ".join([f"<b>{r['neighborhood'].title()}</b> (${r['med_price']/1e6:.2f}M)" for _, r in top_p_geo.iterrows()])
+    v_spots = ", ".join([f"<b>{r['neighborhood'].title()}</b> ({r['n_count']:,} GD)" for _, r in top_v_geo.iterrows()])
 
-        # Thêm lat, lon cho từng khu vực
-        coords_list = [get_neighborhood_coords(row['neighborhood'], row['borough_name']) for _, row in geo_df.iterrows()]
-        geo_df['lat'] = [c[0] for c in coords_list]
-        geo_df['lon'] = [c[1] for c in coords_list]
-        geo_df['med_ppsf_clean'] = geo_df['med_ppsf'].fillna(0)
-
-        mc1, mc2, mc3 = st.columns([2, 1, 1])
-        with mc1:
-            map_metric = st.radio(
-                "Hiển thị điểm nóng theo:",
-                options=[" Giá trung vị ($)", " Giá/sqft trung vị ($)", " Mật độ giao dịch (Số căn)"],
-                horizontal=True, key="hm_metric_radio"
-            )
-        with mc2:
-            radius_val = st.slider("Bán kính điểm nhiệt (Radius)", 15, 45, 25, key="hm_radius_slider")
-        with mc3:
-            zoom_val = st.slider("Độ phóng đại (Zoom)", 9, 13, 10, key="hm_zoom_slider")
-
-        if map_metric == " Giá trung vị ($)":
-            target_z = 'med_price'
-            color_scale = "Plasma"
-            z_title = "Giá trung vị ($)"
-        elif map_metric == " Giá/sqft trung vị ($)":
-            target_z = 'med_ppsf_clean'
-            color_scale = "Inferno"
-            z_title = "Giá/sqft ($)"
-        else:
-            target_z = 'n_count'
-            color_scale = "Viridis"
-            z_title = "Số giao dịch"
-
-        fig_map = px.density_mapbox(
-            geo_df,
-            lat='lat',
-            lon='lon',
-            z=target_z,
-            radius=radius_val,
-            center=dict(lat=40.7400, lon=-73.9400),
-            zoom=zoom_val,
-            mapbox_style="open-street-map",
-            color_continuous_scale=color_scale,
-            hover_name="neighborhood",
-            hover_data={
-                "borough_name": True,
-                "med_price": ":$,.0f",
-                "med_ppsf_clean": ":$,.0f",
-                "n_count": ":,",
-                "lat": ":.4f",
-                "lon": ":.4f"
-            },
-            labels={
-                "borough_name": "Quận",
-                "med_price": "Giá trung vị",
-                "med_ppsf_clean": "Giá/sqft",
-                "n_count": "Số GD",
-                "lat": "Latitude",
-                "lon": "Longitude"
-            }
-        )
-        clayout(fig_map, h=520, t=10, b=10, l=10, r=10)
-        fig_map.update_layout(
-            title_text="",
-            coloraxis_colorbar=dict(title=z_title, len=0.8)
-        )
-        st.plotly_chart(fig_map, width='stretch')
-
-        # Chú giải điểm nóng
-        top_p_geo = geo_df.sort_values('med_price', ascending=False).head(3)
-        top_v_geo = geo_df.sort_values('n_count', ascending=False).head(3)
-        p_spots = ", ".join([f"<b>{r['neighborhood'].title()}</b> (${r['med_price']/1e6:.2f}M)" for _, r in top_p_geo.iterrows()])
-        v_spots = ", ".join([f"<b>{r['neighborhood'].title()}</b> ({r['n_count']:,} GD)" for _, r in top_v_geo.iterrows()])
-
+    insight_box(f"""
+    <b>📍 Nhận diện Điểm nóng (Hotspots) trên Bản đồ:</b><br>
+    • 🔴 <b>Điểm nóng về Giá bán (Hotspots Giá cao):</b> Tập trung dày đặc tại khu vực lõi Manhattan: {p_spots}.<br>
+    • 🟢 <b>Điểm nóng về Thanh khoản (Hotspots Giao dịch nhộn nhịp):</b> Phân bố rộng ở Queens & Brooklyn: {v_spots}.<br>
+    • 💡 <i>Mẹo sử dụng bản đồ: Phóng to (Zoom) để quan sát từng góc phố, di chuột qua từng điểm màu nhiệt để xem chi tiết đơn giá $/sqft và tổng số giao dịch thực tế.</i>
+    """)
 
     divider()
     section_q("Giá bán phân bố như thế nào trong từng quận?",
               "Đường giữa = trung vị. Hộp = khoảng tứ phân vị (25%–75%). Nhãn giá trung vị được ghi trực tiếp.")
 
     bor_ord1 = df.groupby('borough_name')['sale_price'].median().sort_values(ascending=False).index.tolist()
-    df_box_sample = df.sample(n=min(10000, len(df)), random_state=42)
-    fig = px.box(df_box_sample, x='borough_name', y='sale_price', color='borough_name',
+    fig = px.box(df, x='borough_name', y='sale_price', color='borough_name',
                  color_discrete_map=BOROUGH_COLORS, points=False,
                  labels={'borough_name':'Quận','sale_price':'Giá bán (USD)'},
                  category_orders={'borough_name': bor_ord1},
@@ -1141,31 +872,25 @@ with tab1:
                           title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig, width='stretch')
     with cn2:
-        # price_per_sqft_real có thể được dùng nếu price_per_sqft thiếu
-        ppsf_col = 'price_per_sqft' if 'price_per_sqft' in df.columns and df['price_per_sqft'].notna().sum() > 0 else 'price_per_sqft_real'
-        df_ppsf2 = df.loc[df[ppsf_col].notna() & (df[ppsf_col] > 0) & (df[ppsf_col] < 5000), ['neighborhood', 'borough_name', ppsf_col]]
-        if len(df_ppsf2) > 0:
-            t15p = (df_ppsf2.groupby(['neighborhood','borough_name'])[ppsf_col]
+        if len(df_ppsf) > 0:
+            t15p = (df_ppsf.groupby(['neighborhood','borough_name'])['price_per_sqft']
                     .agg(med_ppsf='median', cnt='count').reset_index())
             t15p = t15p[t15p['cnt'] >= 5].nlargest(15,'med_ppsf').sort_values('med_ppsf')
             t15p['Khu vực'] = t15p['neighborhood'].str.title().str[:25]
             if len(t15p) > 0:
                 top_n_ppsf_row = t15p.iloc[-1]
-            if len(t15p) > 0:
-                fig = px.bar(t15p, x='med_ppsf', y='Khu vực', orientation='h',
-                             color='borough_name', color_discrete_map=BOROUGH_COLORS,
-                             text=t15p['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
-                             title="Top 15 khu vực giá/sqft cao nhất (trung vị)",
-                             labels={'borough_name':'Quận','med_ppsf':'$/sqft (trung vị)'})
-                fig.update_traces(textposition='auto')
-                clayout(fig, h=460, t=40, b=20, r=80, leg=True)
-                fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
-                                  xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
-                                  legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
-                                  title_font=dict(size=13, color='#374151'))
-                st.plotly_chart(fig, width='stretch')
-            else:
-                st.info("Không đủ dữ liệu giá/sqft sau khi lọc.")
+            fig = px.bar(t15p, x='med_ppsf', y='Khu vực', orientation='h',
+                         color='borough_name', color_discrete_map=BOROUGH_COLORS,
+                         text=t15p['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
+                         title="Top 15 khu vực giá/sqft cao nhất (trung vị)",
+                         labels={'borough_name':'Quận','med_ppsf':'$/sqft (trung vị)'})
+            fig.update_traces(textposition='auto')
+            clayout(fig, h=460, t=40, b=20, r=80, leg=True)
+            fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
+                              xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
+                              legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
+                              title_font=dict(size=13, color='#374151'))
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("Không đủ dữ liệu giá/sqft.")
 
@@ -1177,7 +902,7 @@ with tab2:
     <div style='background:linear-gradient(135deg,#5b21b6,#7c3aed,#a78bfa);border-radius:14px;
     padding:18px 24px;color:#fff;margin-bottom:22px;
     box-shadow:0 6px 24px rgba(124,58,237,0.35)'>
-    <b style='font-size:15px;letter-spacing:-0.3px'> Phân tích Ma trận Yếu tố & Các Biến số Quyết định Giá</b><br>
+    <b style='font-size:15px;letter-spacing:-0.3px'>📐 Phân tích Ma trận Yếu tố & Các Biến số Quyết định Giá</b><br>
     <span style='font-size:12px;opacity:0.88'>Tóm tắt các yếu tố ảnh hưởng mạnh/yếu, ma trận tương quan và giải thích ý nghĩa chiều tác động của các biến số chính đến giá bán thực tế.</span>
     </div>
     """, unsafe_allow_html=True)
@@ -1196,47 +921,39 @@ with tab2:
         "Ma trận tương quan tổng thể giữa các yếu tố với Giá bán",
         "Đọc bản đồ nhiệt: ô màu đỏ = tương quan thuận (+); ô màu xanh = tương quan nghịch (-). Số trong ô là hệ số tương quan r."
     )
-    cc_cols = ['sale_price','gross_sqft','avg_income','dist_center','pop_density','building_age']
+    cc_cols = ['sale_price','gross_sqft','avg_income','amenity_score','dist_center','pop_density','building_age']
     cc_lbl  = {'sale_price':'Giá bán','gross_sqft':'Diện tích','avg_income':'Thu nhập TB',
-               'dist_center':'KC trung tâm','pop_density':'Mật độ dân số',
-               'building_age':'Tuổi công trình'}
+               'amenity_score':'Điểm tiện ích','dist_center':'KC trung tâm','pop_density':'Mật độ dân số','building_age':'Tuổi công trình'}
+    cc_data = df[cc_cols].dropna()
+    cc_mat  = cc_data.corr()
+    cc_mat.columns = [cc_lbl[c] for c in cc_mat.columns]
+    cc_mat.index   = [cc_lbl[c] for c in cc_mat.index]
     
-    # Tính ma trận tương quan trực tiếp, không drop cột hằng số để giữ nguyên lưới biểu đồ.
-    # Các giá trị lỗi (NaN do phương sai = 0) sẽ được điền 0 (không có tương quan tuyến tính).
-    cc_mat = df[cc_cols].corr().fillna(0)
-    
-    if len(cc_mat.columns) > 1:
-        cc_mat.columns = [cc_lbl[c] for c in cc_mat.columns]
-        cc_mat.index   = [cc_lbl[c] for c in cc_mat.index]
-        
-        fig_corr_mat = px.imshow(cc_mat, text_auto='.2f', color_continuous_scale='RdBu_r',
-                                zmin=-1, zmax=1, aspect='equal',
-                                title='Ma trận tương quan giữa các yếu tố và Giá bán')
-        clayout(fig_corr_mat, h=360, t=40, b=20)
-        fig_corr_mat.update_layout(
-            coloraxis_colorbar=dict(title='Hệ số r', len=0.8),
-            title_font=dict(size=13, color='#374151')
-        )
-        st.plotly_chart(fig_corr_mat, width='stretch')
-    else:
-        st.info("Không đủ biến số có sự phân tán dữ liệu để vẽ ma trận tương quan.")
+    fig_corr_mat = px.imshow(cc_mat, text_auto='.2f', color_continuous_scale='RdBu_r',
+                            zmin=-1, zmax=1, aspect='equal',
+                            title='Ma trận tương quan giữa các yếu tố và Giá bán')
+    clayout(fig_corr_mat, h=360, t=40, b=20)
+    fig_corr_mat.update_layout(
+        coloraxis_colorbar=dict(title='Hệ số r', len=0.8),
+        title_font=dict(size=13, color='#374151')
+    )
+    st.plotly_chart(fig_corr_mat, width='stretch')
 
     divider()
 
     # ── PHÂN TÍCH CHI TIẾT 3 BIẾN SỐ CHÍNH THEO YÊU CẦU ──
     st.markdown("""
     <div style='font-size:18px;font-weight:800;color:#1e1b4b;margin-bottom:16px'>
-     PHÂN TÍCH CHI TIẾT 3 BIẾN SỐ CHỦ ĐẠO TÁC ĐỘNG ĐẾN GIÁ BÁN
+    🔍 PHÂN TÍCH CHI TIẾT 3 BIẾN SỐ CHỦ ĐẠO TÁC ĐỘNG ĐẾN GIÁ BÁN
     </div>
     """, unsafe_allow_html=True)
 
     # 1. BIẾN SỐ 1: DIỆN TÍCH (gross_sqft)
-    section_q("1. Biến số DIỆN TÍCH CÔNG TRÌNH (gross_sqft) — Mức độ tác động:  RẤT MẠNH",
+    section_q("1. Biến số DIỆN TÍCH CÔNG TRÌNH (gross_sqft) — Mức độ tác động: 🚀 RẤT MẠNH",
               "Phân tích mối quan hệ giữa quy mô diện tích sàn sử dụng và tổng giá bán bất động sản.")
     
-    mask = df['gross_sqft'].notna() & df['gross_sqft'].between(100, 4000)
-    q97 = df.loc[mask, 'sale_price'].quantile(0.97)
-    df_sq = df.loc[mask & (df['sale_price'] < q97), ['gross_sqft', 'sale_price']].copy()
+    df_sq = df[df['gross_sqft'].notna() & df['gross_sqft'].between(100, 4000)].copy()
+    df_sq = df_sq[df_sq['sale_price'] < df_sq['sale_price'].quantile(0.97)]
     corr_sq = df_sq['gross_sqft'].corr(df_sq['sale_price']) if len(df_sq) >= 20 else 0
 
     if len(df_sq) >= 50:
@@ -1262,14 +979,21 @@ with tab2:
                 trace.name = 'Đường xu hướng (OLS)'
         st.plotly_chart(fig_sq_chart, width='stretch')
 
+    insight_box(f"""
+    <b>💡 Ý nghĩa kinh tế của Biến số DIỆN TÍCH (gross_sqft):</b><br>
+    • Hệ số tương quan: <b>r = +{corr_sq:.2f}</b> (Tương quan thuận rất mạnh).<br>
+    • <b>Giải thích thực tế:</b> Diện tích sàn là yếu tố vật lý đóng vai trò quyết định số 1 tới giá bán. 
+      Căn hộ có diện tích lớn hơn cung cấp không gian sống rộng rãi hơn, nhiều phòng ngủ/phòng tắm hơn. 
+      Mỗi 500 sqft diện tích tăng thêm giúp giá trị tài sản tăng trung bình từ 40% - 60%.
+    """)
 
     divider()
 
     # 2. BIẾN SỐ 2: THU NHẬP KHU VỰC (avg_income)
-    section_q("2. Biến số THU NHẬP BÌNH QUÂN KHU VỰC (avg_income) — Mức độ tác động:  MẠNH",
+    section_q("2. Biến số THU NHẬP BÌNH QUÂN KHU VỰC (avg_income) — Mức độ tác động: 📈 MẠNH",
               "Phân tích tác động của sức mua và mức độ đắt đỏ của dân cư sinh sống tại khu vực đến mặt bằng giá nhà.")
 
-    df_inc = df.loc[df['avg_income'].notna(), ['avg_income', 'sale_price', 'price_per_sqft', 'borough_name']].copy()
+    df_inc = df[df['avg_income'].notna()].copy()
     corr_inc = df_inc['avg_income'].corr(df_inc['sale_price']) if len(df_inc) >= 20 else 0
 
     inc_summary = df_inc.groupby('borough_name').agg(
@@ -1295,14 +1019,21 @@ with tab2:
     )
     st.plotly_chart(fig_inc, width='stretch')
 
+    insight_box(f"""
+    <b>💡 Ý nghĩa kinh tế của Biến số THU NHẬP KHU VỰC (avg_income):</b><br>
+    • Hệ số tương quan: <b>r = +{corr_inc:.2f}</b> (Tương quan thuận mạnh).<br>
+    • <b>Giải thích thực tế:</b> Thu nhập bình quân của dân cư khu vực phản ánh <i>sức mua (purchasing power)</i> 
+      và chất lượng môi trường sống. Khu vực có thu nhập cao (như Manhattan: ~$88K/năm) thường sở hữu hạ tầng cao cấp, 
+      an ninh tốt và trường học chất lượng, dẫn tới nhu cầu mua nhà cao hơn và sẵn sàng trả mức giá áp đảo so với các quận phụ cận.
+    """)
 
     divider()
 
     # 3. BIẾN SỐ 3: TUỔI BẤT ĐỘNG SẢN (building_age)
-    section_q("3. Biến số TUỔI CÔNG TRÌNH (building_age) — Mức độ tác động:  YẾU / ÂM",
+    section_q("3. Biến số TUỔI CÔNG TRÌNH (building_age) — Mức độ tác động: 📉 YẾU / ÂM",
               "Phân tích tác động của thời gian vận hành công trình đến giá bán (khấu hao vật lý vs giá trị vị trí).")
 
-    df_age = df.loc[df['building_age'].notna() & df['building_age'].between(0, 120), ['building_age', 'sale_price']].copy()
+    df_age = df[df['building_age'].notna() & df['building_age'].between(0, 120)].copy()
     corr_age = df_age['building_age'].corr(df_age['sale_price']) if len(df_age) >= 20 else 0
 
     df_age['age_group'] = pd.cut(
@@ -1324,232 +1055,128 @@ with tab2:
     fig_age.update_layout(coloraxis_showscale=False, yaxis=dict(tickformat='$,.0f', automargin=True), title_font=dict(size=13, color='#374151'))
     st.plotly_chart(fig_age, width='stretch')
 
+    insight_box(f"""
+    <b>💡 Ý nghĩa kinh tế của Biến số TUỔI BẤT ĐỘNG SẢN (building_age):</b><br>
+    • Hệ số tương quan: <b>r = {corr_age:.2f}</b> (Tương quan âm nhẹ).<br>
+    • <b>Giải thích thực tế:</b> Bất động sản mới xây (<15 năm) sở hữu giá bán cao nhất do thiết kế hiện đại và không tốn chi phí sửa chữa. 
+      Công trình cũ có xu hướng giảm giá do <i>khấu hao tài sản (physical depreciation)</i>. Tuy nhiên tại NYC, mối tương quan này khá yếu vì nhiều tòa nhà cổ (>70 năm) tại Manhattan hay Brooklyn Heights nằm ở vị trí đất vàng đắt đỏ và có kiến trúc lịch sử được bảo tồn, bù đắp đáng kể sự suy giảm về tuổi đời.
+    """)
 
 # ════════════════════════════════════════════════════════════
-# CHUẨN BỊ DỮ LIỆU ĐỀ XUẤT (Tính toán chung cho cả Tab 6 & 7)
+# TAB 3 — BIẾN ĐỘNG THEO THỜI GIAN
 # ════════════════════════════════════════════════════════════
-import matplotlib.dates as mdates
-
-cols_t3 = ['sale_year', 'sale_month', 'sale_price', 'borough_name', 'neighborhood']
-df_t3 = df.dropna(subset=['sale_year', 'sale_month'])[cols_t3].copy()
-df_t3['sale_month_int'] = pd.to_numeric(df_t3['sale_month'], errors='coerce').fillna(0).astype(int)
-df_t3['sale_year_int']  = pd.to_numeric(df_t3['sale_year'],  errors='coerce').fillna(0).astype(int)
-df_t3 = df_t3[(df_t3['sale_month_int'] >= 1) & (df_t3['sale_month_int'] <= 12) & (df_t3['sale_year_int'] >= 2000)]
-df_t3["ym_dt"] = pd.to_datetime(
-    df_t3["sale_year_int"].astype(str) + "-" + df_t3["sale_month_int"].astype(str).str.zfill(2),
-    format="%Y-%m", errors='coerce')
-df_t3 = df_t3.dropna(subset=['ym_dt'])
-
-start_dt_str = df_t3['ym_dt'].min().strftime('%m/%Y') if not df_t3.empty else "N/A"
-end_dt_str = df_t3['ym_dt'].max().strftime('%m/%Y') if not df_t3.empty else "N/A"
-col_start = f"Giá Bắt Đầu ({start_dt_str})"
-col_end = f"Giá Hiện Tại ({end_dt_str})"
-
-def format_table(df_tbl):
-    def get_text_color(val):
-        if not isinstance(val, (int, float)): return ""
-        if val >= 5: return "color: #047857; font-weight: bold;" # Dark Green
-        elif val > 0: return "color: #059669; font-weight: bold;" # Green
-        elif val <= -5: return "color: #B91C1C; font-weight: bold;" # Dark Red
-        elif val < 0: return "color: #DC2626; font-weight: bold;" # Red
-        return "color: #475569; font-weight: bold;" # Slate (0%)
-
-    format_dict = {"CAGR (%)": "{:+.1f}%"}
-    for col in df_tbl.columns:
-        if "Giá" in col:
-            format_dict[col] = "${:,.0f}"
-    
-    return df_tbl.style.format(format_dict).map(get_text_color, subset=["CAGR (%)"])
-
-# Tính toán neigh_stats (Cho Tích sản)
-df_neigh_agg = df_t3.groupby(["borough_name", "neighborhood", "ym_dt"])["sale_price"].median().reset_index()
-df_neigh_count = df_t3.groupby(["borough_name", "neighborhood"]).size().reset_index(name="S_GD")
-
-neigh_stats = []
-for boro in df_neigh_agg["borough_name"].unique():
-    b_df = df_neigh_agg[df_neigh_agg["borough_name"] == boro]
-    for n in b_df["neighborhood"].unique():
-        sub = b_df[b_df["neighborhood"] == n].sort_values("ym_dt")
-        n_gd = df_neigh_count[(df_neigh_count["borough_name"] == boro) & (df_neigh_count["neighborhood"] == n)]["S_GD"].iloc[0]
-    
-        if len(sub) < 3 or n_gd < 10: 
-            continue
-        
-        start_p = sub["sale_price"].iloc[0]
-        end_p = sub["sale_price"].iloc[-1]
-        pct = (end_p - start_p) / start_p * 100
-
-        # Tính R2
-        sub['growth_pct'] = (sub['sale_price'] - start_p) / start_p * 100
-        x_num = mdates.date2num(sub['ym_dt'])
-        y = sub['growth_pct'].values
-        coef = np.polyfit(x_num, y, 1)
-        trend = np.polyval(coef, x_num)
-        ss_res = np.sum((y - trend) ** 2)
-        ss_tot = np.sum((y - np.mean(y)) ** 2)
-        r2 = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
-
-        neigh_stats.append({
-            "Quận": boro, "Khu Vực": n, col_start: start_p, 
-            col_end: end_p, "CAGR (%)": pct, 
-            "Slope": coef[0], "R2": r2, "Số tháng": len(sub), "Số GD": n_gd
-        })
-
-df_neigh_all = pd.DataFrame(neigh_stats) if neigh_stats else pd.DataFrame()
-valid_neighs = pd.DataFrame()
-if not df_neigh_all.empty:
-    valid_neighs = df_neigh_all[(df_neigh_all['Số GD'] >= 15) & (df_neigh_all['Số tháng'] >= 4)].copy()
-    if len(valid_neighs) > 0:
-        valid_neighs['Điểm Tin Cậy'] = (
-            (valid_neighs['Số GD'] / 120 * 40).clip(upper=40) + 
-            (valid_neighs['Số tháng'] / 19 * 30).clip(upper=30) + 
-            (valid_neighs['R2'] * 30).clip(upper=30)
-        ).round(0)
-
-# Hàm vẽ biểu đồ
-def plot_single_neighborhood(boro_name, neigh_name, title, color_neigh, height=320):
-    fig = go.Figure()
-    sub_n = df_neigh_agg[(df_neigh_agg["borough_name"] == boro_name) & (df_neigh_agg["neighborhood"] == neigh_name)].sort_values("ym_dt")
-    final_pct = 0
-    if len(sub_n) > 0:
-        base_n = sub_n["sale_price"].iloc[0]
-        sub_n['growth_pct'] = (sub_n['sale_price'] - base_n) / base_n * 100
-        final_pct = ((sub_n['sale_price'].iloc[-1] / base_n) ** (12 / 19.0) - 1) * 100
-    
-        fig.add_trace(go.Scatter(
-            x=sub_n['ym_dt'], y=sub_n['growth_pct'],
-            mode='lines+markers', name=neigh_name,
-            marker=dict(size=4),
-            line=dict(color=color_neigh, width=2.5),
-            customdata=sub_n['sale_price'],
-            hovertemplate=f'<b>{neigh_name}</b><br>%{{x|%m/%Y}}<br>Lợi suất: <b>%{{y:+.1f}}%</b><br>Giá: $%{{customdata:,.0f}}<extra></extra>'))
-
-        if len(sub_n) >= 3:
-            x_num = mdates.date2num(sub_n['ym_dt'])
-            coef = np.polyfit(x_num, sub_n['growth_pct'].ffill().bfill().values, 1)
-            trend = np.polyval(coef, x_num)
-            fig.add_trace(go.Scatter(
-                x=sub_n['ym_dt'], y=trend, mode='lines', showlegend=False,
-                line=dict(color=color_neigh, width=1.5, dash='dash'), hoverinfo='skip'))
-
-    clayout(fig, h=height, t=40, b=10)
-    fig.update_layout(
-        title=dict(text=title, font=dict(size=14, color='#374151')),
-        hovermode='x unified',
-        yaxis=dict(ticksuffix='%', title="", zeroline=False),
-        legend=dict(orientation='h', y=1.1, x=0))
-    return fig, final_pct
-
-def render_mini_confidence(neigh_name):
-    try:
-        n_stats = df_neigh_all[df_neigh_all['Khu Vực'] == neigh_name].iloc[0]
-        n_gd = n_stats['Số GD']
-        n_thang = n_stats['Số tháng']
-        n_r2 = n_stats['R2']
-        total_score = min((n_gd/120)*40, 40) + min((n_thang/19)*30, 30) + min(n_r2*30, 30)
-        if total_score >= 80: rating = "Cực kỳ đáng tin"
-        elif total_score >= 60: rating = "Khá đáng tin"
-        else: rating = "Tin cậy TB"
-        st.markdown(f"<div style='text-align: center; font-size: 13px; color: #64748b; margin-top: -15px;'>Độ tin cậy: <b>{total_score:.0f}/100</b> ({rating}) - Dựa trên {n_gd} GD / {n_thang} tháng</div>", unsafe_allow_html=True)
-    except: pass
-
-# ════════════════════════════════════════════════════════════
-# TAB 6 — ĐỀ XUẤT CHIẾN LƯỢC
-# ════════════════════════════════════════════════════════════
-with tab_adv:
+with tab3:
     st.markdown("""
-    <div style='background:linear-gradient(135deg,#1e3a8a,#3b82f6,#93c5fd);border-radius:14px;
+    <div style='background:linear-gradient(135deg,#b45309,#d97706,#fbbf24);border-radius:14px;
     padding:18px 24px;color:#fff;margin-bottom:22px;
-    box-shadow:0 6px 24px rgba(59,130,246,0.35)'>
-        <h2 style='margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px;'> Đề xuất Đầu tư Bất động sản</h2>
-        <p style='margin:8px 0 0;font-size:15px;opacity:0.9;'>Dưới đây là 2 chiến lược thiết kế riêng cho 2 chân dung khách hàng phổ biến nhất trong giới đầu tư Bất động sản.</p>
+    box-shadow:0 6px 24px rgba(245,158,11,0.35)'>
+    <b style='font-size:15px;letter-spacing:-0.3px'>📅 Thị trường đang đi theo hướng nào?</b><br>
+    <span style='font-size:12px;opacity:0.9'>Xu hướng giá theo tháng, tính mùa vụ giao dịch
+    và dự báo 6 tháng tới dựa trên dữ liệu lịch sử.</span>
     </div>
     """, unsafe_allow_html=True)
 
-    top_3_tich_san_names = []
-    top_3_luot_song_names = []
+    yoy_med3 = df.groupby('sale_year')['sale_price'].median()
+    yrs3 = sorted(yoy_med3.index)
+    yoy_pct3 = (yoy_med3[yrs3[-1]]/yoy_med3[yrs3[-2]]-1)*100 if len(yrs3) >= 2 else 0
+    monthly_cnt3 = df['sale_month'].value_counts()
+    peak_m3 = monthly_cnt3.idxmax() if len(monthly_cnt3) > 0 else 1
+    new_yr3 = len(df[df['sale_year'] == year_range[1]])
 
-    st.markdown("<h3 style='color:#064e3b; border-bottom: 2px solid #10b981; padding-bottom: 5px;'> ĐỀ XUẤT DÀI HẠN (An Toàn & Ổn Định)</h3>", unsafe_allow_html=True)
-    
-    if len(valid_neighs) > 0:
-        # Sắp xếp để lấy Top 3
-        df_leaderboard = valid_neighs[["Quận", "Khu Vực", col_end, "CAGR (%)", "Điểm Tin Cậy"]].copy()
-        df_leaderboard.rename(columns={"CAGR (%)": "Tăng trưởng (%)"}, inplace=True)
-        df_leaderboard = df_leaderboard.sort_values("Điểm Tin Cậy", ascending=False)
-        top_3_df = df_leaderboard.head(3)
-        top_3_tich_san_names = top_3_df['Khu Vực'].tolist()
-        
-        st.markdown("<h5 style='color:#334155; margin-top: 15px;'>Top 3 Khu Vực An Toàn Nhất (Dựa trên Thanh khoản & Ổn định):</h5>", unsafe_allow_html=True)
-        cols = st.columns(3)
-        
-        for i, row in enumerate(top_3_df.itertuples()):
-            with cols[i]:
-                st.markdown(f"""
-                <div style='background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-top: 4px solid #10b981; transition: transform 0.2s;'>
-                    <div style='color: #64748b; font-size: 12px; font-weight: bold; text-transform: uppercase;'>Hạng {i+1}</div>
-                    <div style='color: #0f172a; font-size: 20px; font-weight: 800; margin: 8px 0;'>{row._2}</div>
-                    <div style='font-size: 13px; color: #475569; margin-bottom: 4px;'>Quận: <b>{row.Quận}</b></div>
-                    <div style='display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;'>
-                        <div>
-                            <div style='font-size: 11px; color: #64748b;'>Độ Tin Cậy</div>
-                            <div style='font-size: 16px; font-weight: bold; color: #059669;'>{row._5}/100</div>
-                        </div>
-                        <div>
-                            <div style='font-size: 11px; color: #64748b;'>Tăng trưởng</div>
-                            <div style='font-size: 16px; font-weight: bold; color: #2563eb;'>+{row._4:.1f}%</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-        st.markdown("<p style='text-align:center; font-size:14px; color:#64748b; margin-top:15px;'><i>Vui lòng chọn mục **[Dữ liệu Lịch sử]** để xem biểu đồ tăng trưởng thực tế của 3 khu vực này.</i></p>", unsafe_allow_html=True)
-    else:
-        st.warning("Không có khu vực nào đạt đủ điều kiện thanh khoản trong bộ lọc hiện tại.")
+    kt1,kt2,kt3,kt4 = st.columns(4)
+    kt1.metric("Tăng trưởng YoY (trung vị)", f"{yoy_pct3:+.1f}%" if yoy_pct3 else "—")
+    kt2.metric(f"Giao dịch năm {year_range[1]}", f"{new_yr3:,}")
+    kt3.metric("Tháng cao điểm GD", MONTH_FULL.get(peak_m3,'?'))
+    kt4.metric("Amenity Score TB", f"{df['amenity_score'].mean():.1f}/10")
+    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.divider()
+    section_q("Giá trung bình biến động theo tháng như thế nào — và 6 tháng tới sẽ ra sao?",
+              "Xanh = giá thực tế từng tháng. Cam đứt = đường xu hướng tổng thể. Đỏ ◆ = dự báo 6 tháng tới.")
 
-    st.markdown("<h3 style='color:#c2410c; border-bottom: 2px solid #f97316; padding-bottom: 5px;'> ĐỀ XUẤT NGẮN HẠN (Lợi Nhuận Giao Dịch)</h3>", unsafe_allow_html=True)
-    
-    with st.spinner("Đang phân tích lịch sử giao dịch Bất động sản..."):
-        df_flip, flip_stats, long_term = get_flipping_stats(df)
-    
-    if flip_stats is None or len(flip_stats) == 0:
-        st.warning("Không tìm thấy đủ dữ liệu giao dịch lướt sóng trong bộ lọc hiện tại.")
-    else:
-        top_roi = flip_stats.sort_values('avg_roi', ascending=False).head(5)
-        top_3_roi = top_roi.head(3)
-        top_3_luot_song_names = top_3_roi['neighborhood'].tolist()
-        
-        st.markdown("<h5 style='color:#334155; margin-top: 15px;'>Top 3 Điểm Nóng Mua Đi Bán Lại (Biên độ lợi nhuận cao nhất):</h5>", unsafe_allow_html=True)
-        cols_flip = st.columns(3)
-        
-        for i, row in enumerate(top_3_roi.itertuples()):
-            with cols_flip[i]:
-                st.markdown(f"""
-                <div style='background-color: #fffaf5; border: 1px solid #ffedd5; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-top: 4px solid #f97316; transition: transform 0.2s;'>
-                    <div style='color: #ea580c; font-size: 12px; font-weight: bold; text-transform: uppercase;'>Mục tiêu {i+1}</div>
-                    <div style='color: #431407; font-size: 20px; font-weight: 800; margin: 8px 0;'>{row.neighborhood}</div>
-                    <div style='display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #fdba74;'>
-                        <div>
-                            <div style='font-size: 11px; color: #9a3412;'>Số Lượt Lướt</div>
-                            <div style='font-size: 16px; font-weight: bold; color: #c2410c;'>{row.num_flips}</div>
-                        </div>
-                        <div>
-                            <div style='font-size: 11px; color: #9a3412;'>Lợi nhuận TB</div>
-                            <div style='font-size: 16px; font-weight: bold; color: #b91c1c;'>+{row.avg_roi * 100:.1f}%</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-        st.markdown("<p style='text-align:center; font-size:14px; color:#64748b; margin-top:15px;'><i>Vui lòng chọn mục **[Dữ liệu Lịch sử]** để đối chiếu lịch sử dao động giá của các khu vực này.</i></p>", unsafe_allow_html=True)
+    ts3 = df.dropna(subset=['sale_date_parsed']).copy()
+    ts3['ym'] = ts3['sale_date_parsed'].dt.to_period('M')
+    mts3 = ts3.groupby('ym')['sale_price'].agg(mean_price='mean', n='count').reset_index()
+    mts3['ym_dt'] = mts3['ym'].dt.to_timestamp()
+    mts3 = mts3[mts3['n'] >= 5].sort_values('ym_dt').reset_index(drop=True)
 
+    y_fore3 = None; future_d3 = None; y_h3 = None
 
+    if len(mts3) >= 4:
+        xh3 = np.arange(len(mts3)); yh3 = mts3['mean_price'].values; y_h3 = yh3
+        deg3 = min(2, len(mts3)-1)
+        c3 = np.polyfit(xh3, yh3, deg3)
+        yf3 = np.polyval(c3, xh3)
+        xfore3 = np.arange(len(mts3), len(mts3)+6)
+        y_fore3 = np.polyval(c3, xfore3)
+        lp3 = mts3['ym'].iloc[-1]
+        future_d3 = [(lp3+i).to_timestamp() for i in range(1,7)]
+        std3 = float(np.std(yh3 - yf3))
 
-    # ════════════════════════════════════════════════════════════
-    # TAB 4 — DỰ BÁO & MÔ HÌNH ML
-    # ════════════════════════════════════════════════════════════
+        fig_t = go.Figure()
+        fig_t.add_trace(go.Scatter(
+            x=future_d3 + future_d3[::-1],
+            y=list(y_fore3+std3*1.5) + list((y_fore3-std3*1.5))[::-1],
+            fill='toself', fillcolor='rgba(239,68,68,0.1)',
+            line=dict(color='rgba(0,0,0,0)'),
+            name='Khoảng tin cậy dự báo', hoverinfo='skip'))
+        fig_t.add_trace(go.Scatter(
+            x=list(mts3['ym_dt'])+list(mts3['ym_dt'])[::-1],
+            y=list(yf3+std3)+list((yf3-std3))[::-1],
+            fill='toself', fillcolor='rgba(59,130,246,0.07)',
+            line=dict(color='rgba(0,0,0,0)'),
+            name='Biên lịch sử (±1σ)', hoverinfo='skip'))
+        fig_t.add_trace(go.Scatter(
+            x=mts3['ym_dt'], y=mts3['mean_price'], mode='lines+markers',
+            name='Giá TB thực tế', line=dict(color=C_BLUE, width=2.5),
+            marker=dict(size=6),
+            hovertemplate='%{x|%m/%Y}<br>$%{y:,.0f}<extra></extra>'))
+        fig_t.add_trace(go.Scatter(
+            x=mts3['ym_dt'], y=yf3, mode='lines',
+            name='Xu hướng đa thức',
+            line=dict(color=C_ORANGE, width=2, dash='dot'),
+            hovertemplate='%{x|%m/%Y}<br>$%{y:,.0f}<extra></extra>'))
+        fig_t.add_trace(go.Scatter(
+            x=future_d3, y=y_fore3, mode='lines+markers',
+            name='Dự báo 6 tháng',
+            line=dict(color=C_RED, width=2.5, dash='dash'),
+            marker=dict(size=9, symbol='diamond', color=C_RED,
+                        line=dict(color='white', width=1.5)),
+            hovertemplate='%{x|%m/%Y}<br>Dự báo: $%{y:,.0f}<extra></extra>'))
+        clayout(fig_t, h=420, t=50, b=20, leg=True)
+        fig_t.update_layout(
+            title='Xu hướng Giá bán & Dự báo 6 tháng tới',
+            title_font=dict(size=14, color='#374151'),
+            xaxis=dict(title='Tháng', automargin=True),
+            yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung bình ($)'),
+            legend=dict(orientation='h', y=1.12, x=0, font_size=11),
+            hovermode='x unified')
+        st.plotly_chart(fig_t, width='stretch')
+
+    divider()
+    section_q("Thị trường có tính mùa vụ rõ không? Tháng nào sôi động nhất?",
+              "Thanh đỏ = tháng cao điểm. Chênh lệch lớn = thị trường có mùa vụ rõ.")
+
+    mb3 = df['sale_month'].value_counts().sort_index().reset_index()
+    mb3.columns = ['Tháng_n','Số giao dịch']
+    mb3['Tháng'] = mb3['Tháng_n'].map(MONTH_SHORT)
+    peak_bar3 = mb3.loc[mb3['Số giao dịch'].idxmax(),'Tháng']
+    fig_m3 = go.Figure(go.Bar(
+        x=mb3['Tháng'], y=mb3['Số giao dịch'],
+        marker_color=[C_RED if t==peak_bar3 else C_BLUE2 for t in mb3['Tháng']],
+        text=mb3['Số giao dịch'], texttemplate='%{text:,}', textposition='outside',
+        hovertemplate='%{x}<br>%{y:,} GD<extra></extra>'))
+    clayout(fig_m3, h=300, t=60, b=20)
+    fig_m3.update_layout(
+        title='Số giao dịch theo Tháng trong năm (Tính mùa vụ)',
+        title_font=dict(size=14, color='#374151'),
+        yaxis=dict(automargin=True, title='Số giao dịch'),
+        xaxis=dict(title='Tháng', automargin=True),
+        uniformtext_minsize=10, uniformtext_mode='hide')
+    st.plotly_chart(fig_m3, width='stretch')
+
+# ════════════════════════════════════════════════════════════
+# TAB 4 — DỰ BÁO & MÔ HÌNH ML
+# ════════════════════════════════════════════════════════════
 with tab4:
     st.markdown("""
     <div style='background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#312e81 100%);border-radius:14px;
@@ -1899,507 +1526,4 @@ with tab4:
                 </div>
                 """, unsafe_allow_html=True)
 
-
-with tab7:
-    st.markdown("##  Phân tích Tác động Tiện ích đến Giá nhà (2025 - 2026)")
-
-    try:
-        df_fi = pd.read_csv('output/spatial_feature_importance.csv')
-        
-        # Rename features for display
-        feature_names = {
-            'building_age': 'Tuổi thọ tòa nhà',
-            'dist_to_nearest_subway': 'Khoảng cách đến Ga Tàu (Mét)',
-            'num_subway_within_1km': 'Số Ga Tàu bán kính 1km',
-            'residential_units': 'Số lượng phòng ở',
-            'num_park_within_1km': 'Số Công viên bán kính 1km',
-            'gross_sqft': 'Tổng diện tích',
-            'dist_to_nearest_park': 'Khoảng cách đến Công viên (Mét)',
-            'dist_to_nearest_hospital': 'Khoảng cách đến Bệnh viện (Mét)',
-            'num_hospital_within_1km': 'Số Bệnh viện bán kính 1km',
-            'dist_to_nearest_school': 'Khoảng cách đến Trường học (Mét)',
-            'num_school_within_1km': 'Số Trường học bán kính 1km',
-            'dist_to_nearest_university': 'Khoảng cách đến Đại học (Mét)',
-            'num_university_within_1km': 'Số Đại học bán kính 1km',
-            'dist_to_nearest_supermarket': 'Khoảng cách đến Siêu thị (Mét)',
-            'num_supermarket_within_1km': 'Số Siêu thị bán kính 1km'
-        }
-        
-        # Lọc bỏ các biến cấu trúc (chỉ giữ lại các biến tiện ích không gian)
-        structural_feats = ['building_age', 'residential_units', 'gross_sqft']
-        df_fi = df_fi[~df_fi['Feature'].isin(structural_feats)].copy()
-        
-        # Loại bỏ các tiện ích không có dữ liệu (Trọng số = 0) để biểu đồ không bị khoảng trống
-        df_fi = df_fi[df_fi['Importance'] > 0].copy()
-        
-        # Chuẩn hóa lại tỷ trọng (để tổng các tiện ích = 100%)
-        df_fi['Importance'] = df_fi.groupby('Year')['Importance'].transform(lambda x: x / x.sum())
-        
-        df_fi['Feature_Name'] = df_fi['Feature'].map(feature_names).fillna(df_fi['Feature'])
-        df_2025 = df_fi[df_fi['Year'] == 2025].sort_values('Importance')
-        df_2026 = df_fi[df_fi['Year'] == 2026].sort_values('Importance')
-
-        
-        fig_2025 = px.bar(df_2025, x='Importance', y='Feature_Name', orientation='h',
-                          title='Tỷ trọng Đóng góp vào Định giá - 2025',
-                          text=df_2025['Importance'].apply(lambda x: f'{x*100:.1f}%'),
-                          labels={'Importance': 'Tỷ trọng đóng góp (%)', 'Feature_Name': ''},
-                          color_discrete_sequence=['#34d399'])
-        fig_2025.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis=dict(tickformat='.0%'), margin=dict(l=0, r=20, t=50, b=10))
-
-        fig_2026 = px.bar(df_2026, x='Importance', y='Feature_Name', orientation='h',
-                          title='Tỷ trọng Đóng góp vào Định giá - 2026',
-                          text=df_2026['Importance'].apply(lambda x: f'{x*100:.1f}%'),
-                          labels={'Importance': 'Tỷ trọng đóng góp (%)', 'Feature_Name': ''},
-                          color_discrete_sequence=['#f59e0b'])
-        fig_2026.update_layout(yaxis={'categoryorder':'total ascending'}, xaxis=dict(tickformat='.0%'), margin=dict(l=0, r=20, t=50, b=10))
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.plotly_chart(fig_2025, use_container_width=True)
-        with col2:
-            st.plotly_chart(fig_2026, use_container_width=True)
-            
-        st.write("---")
-        st.markdown(f"""
-        *Phân tích này trích xuất từ **{len(df):,} giao dịch**, trong đó sử dụng tọa độ địa lý của **hơn 51.000 giao dịch** hợp lệ trên hệ thống OpenStreetMap để đo lường khoảng cách vật lý chính xác đến các tiện ích công cộng.*
-        *Thuật toán **Random Forest Regressor** được sử dụng để lọc nhiễu và đo lường trọng số.*
-        """)
-        st.warning("⚠️ **LƯU Ý:** Các con số phần trăm (%) dưới đây thể hiện **Tỷ trọng đóng góp** của từng tiện ích vào mô hình AI (Tổng các tiện ích = 100%). Nó **KHÔNG PHẢI** là biên độ tăng giá nhà. Ví dụ: 28.3% nghĩa là Bệnh viện chiếm 28.3% sức nặng khi AI quyết định giá nhà tại khu vực đó.")
-        
-        if st.button("🤖 Chạy lại thuật toán AI cho bộ lọc hiện tại (Mất ~5 giây)", type="primary", use_container_width=True):
-            with st.spinner("Đang truy xuất CSDL và chạy Random Forest Regressor trên tập dữ liệu đã lọc..."):
-                import sqlite3
-                from sklearn.ensemble import RandomForestRegressor
-                import os
-                
-                b_list = "', '".join(selected_boroughs)
-                query = f"""
-                SELECT 
-                    f.sale_price,
-                    f.sale_year,
-                    p.building_age,
-                    p.residential_units,
-                    p.gross_sqft,
-                    a.dist_to_nearest_subway,
-                    a.num_subway_within_1km,
-                    a.dist_to_nearest_park,
-                    a.num_park_within_1km,
-                    a.dist_to_nearest_hospital,
-                    a.num_hospital_within_1km,
-                    a.dist_to_nearest_school,
-                    a.num_school_within_1km
-                FROM fact_sales f
-                JOIN dim_property p ON f.property_id = p.property_id
-                JOIN fact_property_amenities a ON f.location_id = a.location_id
-                JOIN dim_location l ON f.location_id = l.location_id
-                JOIN dim_neighborhood n ON l.neighborhood_id = n.neighborhood_id
-                JOIN dim_borough b ON n.borough_id = b.borough_id
-                WHERE f.sale_year BETWEEN {year_range[0]} AND {year_range[1]}
-                AND f.sale_price BETWEEN {price_range[0]} AND {price_range[1]}
-                AND b.borough_name IN ('{b_list}')
-                """
-                db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'warehouse', 'nyc_warehouse.db')
-                conn = sqlite3.connect(db_path)
-                df_ml = pd.read_sql(query, conn)
-                conn.close()
-                
-                features = [
-                    'dist_to_nearest_subway', 'num_subway_within_1km',
-                    'dist_to_nearest_park', 'num_park_within_1km',
-                    'dist_to_nearest_hospital', 'num_hospital_within_1km',
-                    'dist_to_nearest_school', 'num_school_within_1km',
-                    'building_age', 'residential_units', 'gross_sqft'
-                ]
-                
-                # Xử lý khuyết thiếu
-                for col in features:
-                    if df_ml[col].notna().any():
-                        df_ml[col] = df_ml[col].fillna(df_ml[col].median())
-                    else:
-                        df_ml[col] = df_ml[col].fillna(0)
-                df_ml = df_ml.dropna(subset=['sale_price'])
-                
-                results = []
-                for year in df_ml['sale_year'].unique():
-                    df_y = df_ml[df_ml['sale_year'] == year]
-                    if len(df_y) < 50: continue
-                    rf = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
-                    rf.fit(df_y[features], df_y['sale_price'])
-                    for feat, imp in zip(features, rf.feature_importances_):
-                        results.append({'Feature': feat, 'Importance': imp, 'Year': year})
-                        
-                if results:
-                    df_new = pd.DataFrame(results)
-                    df_new.to_csv('output/spatial_feature_importance.csv', index=False)
-                    st.rerun()
-                else:
-                    st.error("Không đủ dữ liệu để chạy mô hình cho bộ lọc này!")
-        
-    except Exception as e:
-        st.error(f"Chưa có dữ liệu phân tích không gian. Lỗi: {e}")
-
-
-# ════════════════════════════════════════════════════════════
-# TAB 8 — AI FINDER (COMPS)
-# ════════════════════════════════════════════════════════════
-
-@st.cache_data
-def load_comps_data():
-    """
-    Đọc trực tiếp từ fact_property_amenities + fact_sales + các dim tables.
-    Tính toán has_X_1km và amenity_score động từ dữ liệu thực tế.
-    """
-    try:
-        import sqlite3, os
-        db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'warehouse', 'nyc_warehouse.db')
-        conn = sqlite3.connect(db_path)
-
-        df = pd.read_sql_query("""
-            SELECT
-                l.location_id,
-                l.address,
-                l.zip_code,
-                b.borough_name,
-                n.neighborhood_name AS neighborhood_name,
-                p.building_class_category,
-                fs.sale_price,
-                fa.dist_to_nearest_subway,
-                fa.dist_to_nearest_park,
-                fa.dist_to_nearest_hospital,
-                fa.dist_to_nearest_school,
-                fa.dist_to_nearest_supermarket,
-                fa.dist_to_nearest_university,
-                fa.num_subway_within_1km,
-                fa.num_park_within_1km,
-                fa.num_hospital_within_1km,
-                fa.num_school_within_1km,
-                fa.num_supermarket_within_1km,
-                fa.num_university_within_1km
-            FROM fact_sales fs
-            JOIN dim_location       l  ON fs.location_id    = l.location_id
-            JOIN dim_neighborhood   n  ON l.neighborhood_id  = n.neighborhood_id
-            JOIN dim_borough        b  ON n.borough_id       = b.borough_id
-            JOIN dim_property       p  ON fs.property_id     = p.property_id
-            JOIN fact_property_amenities fa ON l.location_id = fa.location_id
-            WHERE fs.sale_price > 10000
-              AND l.zip_code IS NOT NULL
-        """, conn)
-        conn.close()
-
-        # ── Tính has_X_1km (boolean: có tiện ích trong 1km không) ──
-        df['has_subway_1km']      = (df['num_subway_within_1km']      > 0).astype(int)
-        df['has_park_1km']        = (df['num_park_within_1km']        > 0).astype(int)
-        df['has_hospital_1km']    = (df['num_hospital_within_1km']    > 0).astype(int)
-        df['has_school_1km']      = (df['num_school_within_1km']      > 0).astype(int)
-        df['has_supermarket_1km'] = (df['num_supermarket_within_1km'] > 0).astype(int)
-        df['has_university_1km']  = (df['num_university_within_1km']  > 0).astype(int)
-
-        # ── Tính amenity_score (trọng số theo tầm quan trọng BĐS) ──
-        df['amenity_score'] = (
-            df['has_subway_1km']      * 30 +
-            df['has_school_1km']      * 25 +
-            df['has_supermarket_1km'] * 20 +
-            df['has_park_1km']        * 15 +
-            df['has_hospital_1km']    * 10
-        )
-
-        # Đảm bảo zip_code là string để group đúng
-        df['zip_code'] = df['zip_code'].astype(str).str.strip()
-
-        return df
-
-    except Exception as e:
-        error_msg = str(e)
-        if len(error_msg) > 500:
-            error_msg = error_msg[:100] + " ... " + error_msg[-300:]
-        st.error(f"Lỗi đọc dữ liệu AI Finder: {type(e).__name__} - {error_msg}")
-        return pd.DataFrame()
-
-
-with tab_search:
-    st.info(" **MỤC ĐÍCH:** Hệ thống sử dụng dữ liệu lịch sử để **đề xuất các mẫu bất động sản** có đặc tính tương đồng với tiêu chí của bạn (không phải danh sách nhà đang rao bán). Người dùng có thể mượn tọa độ của các căn nhà mẫu này để chủ động khám phá không gian và tiện ích thực tế xung quanh chúng.")
-    st.markdown("""
-    <div style='background:linear-gradient(135deg,#db2777,#be185d,#9d174d);border-radius:14px;
-    padding:18px 24px;color:#fff;margin-bottom:22px;
-    box-shadow:0 6px 24px rgba(219,39,119,0.35)'>
-    <b style='font-size:15px;letter-spacing:-0.3px'> Định vị Bất động sản Tham chiếu</b><br>
-    <span style='font-size:13px;opacity:0.9'>Công cụ tìm kiếm Mã vùng và Căn nhà tham chiếu dựa trên ngân sách và tiện ích 1km.</span>
-    </div>""", unsafe_allow_html=True)
-
-    df_comps = load_comps_data()
-    
-    if df_comps.empty:
-        st.warning("Đang chờ dữ liệu...")
-    else:
-        col_filter, col_res = st.columns([1, 2.2])
-        
-        with col_filter:
-            st.markdown("### ️ Bộ Lọc Thông Minh")
-            
-            # Budget
-            min_price = 100000
-            max_price = 5000000
-            budget = st.slider("Ngân sách ($)", min_value=min_price, max_value=max_price, value=(300000, 1500000), step=50000)
-            
-            # Borough
-            boroughs = ["Tất cả"] + sorted(df_comps['borough_name'].dropna().unique().tolist())
-            selected_boro = st.selectbox("Quận (Borough)", boroughs)
-            
-            # Neighborhood
-            if selected_boro != "Tất cả":
-                avail_neighs = sorted(df_comps[df_comps['borough_name'] == selected_boro]['neighborhood_name'].dropna().unique().tolist())
-            else:
-                avail_neighs = sorted(df_comps['neighborhood_name'].dropna().unique().tolist())
-            neighs = ["Tất cả"] + avail_neighs
-            selected_neigh = st.selectbox("Khu vực (Neighborhood)", neighs)
-            
-            st.markdown("####  Tiện ích < 1km")
-            req_school = st.checkbox(" Có Trường học")
-            req_subway = st.checkbox(" Có Ga Tàu điện ngầm")
-            req_park = st.checkbox(" Có Công viên")
-            req_hospital = st.checkbox(" Có Bệnh viện/Phòng khám")
-            
-            do_search = st.button(" Tìm Kiếm Comps", use_container_width=True, type='primary')
-            
-        with col_res:
-            if do_search:
-                with st.spinner("Đang định vị cụm Zip Code phù hợp..."):
-                    filtered = df_comps[
-                        (df_comps['sale_price'] >= budget[0]) & 
-                        (df_comps['sale_price'] <= budget[1])
-                    ]
-                    
-                    if selected_boro != "Tất cả":
-                        filtered = filtered[filtered['borough_name'] == selected_boro]
-                    if selected_neigh != "Tất cả":
-                        filtered = filtered[filtered['neighborhood_name'] == selected_neigh]
-                    if selected_boro != "Tất cả":
-                        filtered = filtered[filtered['borough_name'] == selected_boro]
-
-                        
-                    if req_school:
-                        filtered = filtered[filtered['has_school_1km'] == 1]
-                    if req_subway:
-                        filtered = filtered[filtered['has_subway_1km'] == 1]
-                    if req_park:
-                        filtered = filtered[filtered['has_park_1km'] == 1]
-                    if req_hospital:
-                        filtered = filtered[filtered['has_hospital_1km'] == 1]
-                        
-                    if len(filtered) == 0:
-                        st.error("Không tìm thấy Bất động sản nào thỏa mãn toàn bộ tiêu chí. Vui lòng nới lỏng bộ lọc.")
-                    else:
-                        # Find best Zip Code (by highest mean amenity_score)
-                        zip_stats = filtered.groupby('zip_code').agg({
-                            'amenity_score': 'mean',
-                            'sale_price': 'median',
-                            'address': 'count',
-                            'borough_name': 'first'
-                        }).rename(columns={'address': 'count'}).reset_index()
-                        
-                        # Only consider Zip Codes with at least 5 comps for reliability
-                        zip_stats = zip_stats[zip_stats['count'] >= 3]
-                        
-                        if len(zip_stats) == 0:
-                            best_zip = filtered['zip_code'].mode()[0]
-                            zip_info = filtered[filtered['zip_code'] == best_zip].iloc[0]
-                            best_boro = zip_info['borough_name']
-                            med_price = filtered[filtered['zip_code'] == best_zip]['sale_price'].median()
-                        else:
-                            best_row = zip_stats.sort_values('amenity_score', ascending=False).iloc[0]
-                            best_zip = best_row['zip_code']
-                            best_boro = best_row['borough_name']
-                            med_price = best_row['sale_price']
-                            
-                        st.success(f"###  ĐỀ XUẤT TỐT NHẤT: Mã Bưu Chính (Zip Code) {best_zip}")
-                        st.markdown(f"** Khu vực:** {best_boro} | ** Giá trung vị (Comps):** ${med_price:,.0f}")
-                        st.markdown("*Khu vực Zip Code này có mật độ tiện ích cao nhất đáp ứng đủ các tiêu chí bạn chọn. Dưới đây là các Căn nhà tham chiếu (Comps) tiêu biểu đã từng giao dịch:*")
-                        
-                        comps_in_zip = filtered[filtered['zip_code'] == best_zip].sort_values('amenity_score', ascending=False).head(3)
-                        
-                        for idx, row in comps_in_zip.iterrows():
-                            # HTML Card
-                            school_tag = " Trường học" if row['has_school_1km'] else ""
-                            subway_tag = " Ga Tàu" if row['has_subway_1km'] else ""
-                            park_tag = " Công viên" if row['has_park_1km'] else ""
-                            market_tag = " Siêu thị" if row.get('has_supermarket_1km') else ""
-                            hosp_tag = " Bệnh viện" if row.get('has_hospital_1km') else ""
-                            tags = " | ".join(filter(None, [school_tag, subway_tag, park_tag, market_tag, hosp_tag]))
-                            
-                            st.markdown(f"""
-                            <div style='border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 12px; border-left: 4px solid #db2777; background: #fafafa;'>
-                                <h4 style='margin-top: 0; color: #1e293b;'> {row['address']}</h4>
-                                <div style='display: flex; justify-content: space-between; font-size: 14px;'>
-                                    <div><b>Phân khúc:</b> {row['building_class_category']}</div>
-                                    <div style='color: #059669; font-weight: bold;'> ${row['sale_price']:,.0f}</div>
-                                </div>
-                                <div style='font-size: 13px; color: #64748b; margin-top: 8px;'>
-                                    <b>Tiện ích 1km:</b> {tags}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-            else:
-                st.info(" Hãy điều chỉnh bộ lọc và bấm **Tìm Kiếm Comps**")
-
-
-
-# ════════════════════════════════════════════════════════════
-# TAB 7 — MINH CHỨNG DỮ LIỆU
-# ════════════════════════════════════════════════════════════
-with tab_evid:
-    st.info(" **HƯỚNG DẪN:** Dưới đây là các biểu đồ thực tế chứng minh cho những đề xuất vừa được AI đưa ra ở Tab Đề xuất Chiến lược.")
-    st.divider()
-
-
-    
-    # In các khu vực top 3 tích sản
-    if len(top_3_tich_san_names) > 0:
-        st.markdown(f"####  Lịch sử Tăng trưởng của Top 3 Đề xuất: {', '.join(top_3_tich_san_names)}")
-        cols_top = st.columns(3)
-        for i, neigh_name in enumerate(top_3_tich_san_names):
-            boro_name = valid_neighs[valid_neighs['Khu Vực'] == neigh_name].iloc[0]['Quận']
-            with cols_top[i]:
-                fig_top, pct_top = plot_single_neighborhood(boro_name, neigh_name, f"{neigh_name}", C_GREEN, height=250)
-                st.plotly_chart(fig_top, use_container_width=True)
-                render_mini_confidence(neigh_name)
-    else:
-        st.warning("Không có khu vực đề xuất tích sản nào để minh chứng.")
-
-    divider()
-
-
-    
-    if len(top_3_luot_song_names) > 0:
-        st.markdown(f"####  Lịch sử Tăng trưởng của Top 3 Điểm Nóng: {', '.join(top_3_luot_song_names)}")
-        cols_top2 = st.columns(3)
-        for i, neigh_name in enumerate(top_3_luot_song_names):
-            boro_name = ""
-            if 'flip_stats' in locals() and not flip_stats.empty:
-                match = flip_stats[flip_stats['neighborhood'] == neigh_name]
-                if not match.empty:
-                    boro_name = df_t3[df_t3['neighborhood'] == neigh_name]['borough_name'].iloc[0] if not df_t3[df_t3['neighborhood'] == neigh_name].empty else ""
-            
-            with cols_top2[i]:
-                if boro_name:
-                    fig_top2, _ = plot_single_neighborhood(boro_name, neigh_name, f"{neigh_name}", C_RED, height=250)
-                    st.plotly_chart(fig_top2, use_container_width=True)
-                else:
-                    st.info(f"Đang tính toán {neigh_name}...")
-    else:
-        st.warning("Không có điểm nóng lướt sóng nào để hiển thị.")
-
-    divider()
-    st.markdown("<h4 style='color:#1e293b; margin-top:0px;'> Toàn cảnh thị trường (Để đối chiếu)</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b; font-size:14px;'>Sử dụng đường xu hướng của toàn thị trường để thấy các khu vực được đề xuất đã vượt trội như thế nào.</p>", unsafe_allow_html=True)
-    mts_all = df_t3.groupby('ym_dt')['sale_price'].median().reset_index().sort_values('ym_dt')
-    if len(mts_all) > 0:
-        base_price_all = mts_all['sale_price'].iloc[0]
-        mts_all['growth_pct'] = (mts_all['sale_price'] - base_price_all) / base_price_all * 100
-
-        fig_all = go.Figure()
-        fig_all.add_trace(go.Scatter(
-            x=mts_all['ym_dt'], y=mts_all['growth_pct'], mode='lines',
-            name='Thị trường chung', line=dict(color=C_BLUE, width=4),
-            customdata=mts_all['sale_price'],
-            hovertemplate='<b>Thị trường chung</b><br>%{x|%m/%Y}<br>Tăng trưởng: <b>%{y:+.1f}%</b><br>Giá: $%{customdata:,.0f}<extra></extra>'
-        ))
-        if len(mts_all) >= 3:
-            x_num = mdates.date2num(mts_all['ym_dt'])
-            coef = np.polyfit(x_num, mts_all['growth_pct'].ffill().bfill().values, 1)
-            trend = np.polyval(coef, x_num)
-            fig_all.add_trace(go.Scatter(
-                x=mts_all['ym_dt'], y=trend, mode='lines', showlegend=False,
-                line=dict(color=C_ORANGE, width=2.5, dash='dash'), hoverinfo='skip'))
-
-        fig_all.add_hline(y=0, line_color="#9CA3AF", line_width=1.5, line_dash="dash")
-        clayout(fig_all, h=300, t=20, b=20)
-        fig_all.update_layout(
-            title_text="",
-            hovermode='x unified',
-            yaxis=dict(ticksuffix='%', title="Tăng trưởng Giá (%)", zeroline=False))
-        st.plotly_chart(fig_all, width='stretch')
-        
-    # --- NỘI SOI KHU VỰC ĐỘNG ---
-    divider()
-    st.markdown("<h4 style='color:#1e293b; margin-bottom: 5px;'> Nội soi khu vực (Kiểm chứng tự do)</h4>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#64748b; font-size:14px; margin-bottom: 15px;'>Nếu bạn chọn 1 khu vực bất kỳ ở Bảng xếp hạng bên Tab Đề Xuất, nó sẽ hiện ở đây.</p>", unsafe_allow_html=True)
-    
-    try:
-        all_valid_options = valid_neighs['Khu Vực'].tolist() if len(valid_neighs) > 0 else []
-        default_idx = 0
-        
-        # Nếu người dùng có click chọn bên Tab 1, lấy ra làm giá trị mặc định
-        if 'event' in locals() and hasattr(event, 'selection') and hasattr(event.selection, 'rows'):
-            selected_rows = event.selection.rows
-            if len(selected_rows) > 0 and len(valid_neighs) > 0:
-                selected_idx_tab1 = selected_rows[0]
-                if selected_idx_tab1 < len(df_leaderboard):
-                    selected_n_tab1 = df_leaderboard.iloc[selected_idx_tab1]['Khu Vực']
-                    if selected_n_tab1 in all_valid_options:
-                        default_idx = all_valid_options.index(selected_n_tab1)
-        elif 'event' in locals() and isinstance(event, dict) and 'selection' in event:
-            selected_rows = event['selection'].get('rows', [])
-            if len(selected_rows) > 0 and len(valid_neighs) > 0:
-                selected_idx_tab1 = selected_rows[0]
-                if selected_idx_tab1 < len(df_leaderboard):
-                    selected_n_tab1 = df_leaderboard.iloc[selected_idx_tab1]['Khu Vực']
-                    if selected_n_tab1 in all_valid_options:
-                        default_idx = all_valid_options.index(selected_n_tab1)
-                        
-        if len(all_valid_options) > 0:
-            selected_n = st.selectbox("Lựa chọn khu vực để phân tích chi tiết:", options=all_valid_options, index=default_idx)
-            
-            st.markdown(f"""
-            <div id='target-explorer' style='background:linear-gradient(135deg, #0f172a, #1e293b, #334155); padding:10px 20px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); margin-top:5px; margin-bottom: 5px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
-                <h4 style='margin-top:0px; color:#F8FAFC; margin-bottom: 4px; font-size: 18px;'> Hồ sơ Phân tích: {selected_n}</h4>
-                <p style='color:#94A3B8; font-size:13px; margin-bottom: 0px;'>Chi tiết lịch sử giá và chỉ số rủi ro của khu vực bạn vừa chọn.</p>
-            </div>
-            """, unsafe_allow_html=True)
-    
-            n_stats = valid_neighs[valid_neighs['Khu Vực'] == selected_n].iloc[0]
-            boro_of_n = n_stats['Quận']
-            n_gd = n_stats['Số GD']
-            n_thang = n_stats['Số tháng']
-            n_r2 = n_stats['R2']
-    
-            vol_score = min((n_gd / 500) * 40, 40)
-            time_score = min((n_thang / 60) * 30, 30)
-            trend_score = min(n_r2 * 30, 30)
-            total_score = vol_score + time_score + trend_score
-    
-            if total_score >= 80:
-                rating, stars = "Cực kỳ đáng tin", ""
-            elif total_score >= 60:
-                rating, stars = "Khá đáng tin", ""
-            else:
-                rating, stars = "Độ tin cậy trung bình", ""
-        
-            fig_explore, pct_explore = plot_single_neighborhood(boro_of_n, selected_n, f"Lịch sử giá chi tiết: {selected_n}", C_BLUE, height=220)
-            st.plotly_chart(fig_explore, width='stretch')
-            
-            st.markdown(f"""
-            <div style='background-color:rgba(15, 23, 42, 0.04); border-left:4px solid #3B82F6; padding:10px 15px; border-radius:8px; margin-bottom: 8px; margin-top: -15px;'>
-                <div style='display:flex; justify-content:space-between; align-items:center;'>
-                    <div>
-                        <span style='font-size:12px; color:#64748b; font-weight:bold; text-transform:uppercase;'> Chỉ số Tin cậy Dữ liệu</span>
-                        <span style='font-size:20px; font-weight:800; color:#0f172a; margin-left:8px;'>{total_score:.0f}/100</span>
-                        <span style='font-size:13px; margin-left:6px; font-weight:600;'>{rating}</span>
-                    </div>
-                    <div style='font-size:16px;'>{stars}</div>
-                </div>
-                <div style='margin-top:4px; font-size:13px; color:#475569;'>
-                    Dựa trên <b>{n_gd} giao dịch</b> rải đều trong <b>{n_thang} tháng</b>.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-             st.markdown("""
-                <div style='text-align:center; padding: 40px 20px; border: 2px dashed #cbd5e1; border-radius: 12px; margin-top: 20px;'>
-                    <div style='color:#64748b; font-size:18px; font-weight:bold; margin-bottom:10px;'>Không đủ dữ liệu</div>
-                    <p style='color:#94a3b8; font-size:15px;'>Hệ thống không tìm thấy khu vực nào đủ điều kiện trong bộ lọc hiện tại.</p>
-                </div>
-                """, unsafe_allow_html=True)
-    except Exception as e:
-        st.warning(f"Lỗi khi tải biểu đồ khu vực: {e}")
 
