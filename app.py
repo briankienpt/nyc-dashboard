@@ -1585,9 +1585,9 @@ with tab4:
         diff_rmse = lr_rmse - rmse_val
 
         m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta=f"+{diff_r2:.2f}% vs Linear Reg")
-        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta=f"-${diff_mae:,.0f} so với Baseline", delta_color="inverse")
-        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%", delta=f"-{diff_mape:.2f}% so với Baseline", delta_color="inverse")
-        m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}", delta=f"-${diff_rmse:,.0f} so với Baseline", delta_color="inverse")
+        m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta=f"-${diff_mae:,.0f} vs Linear Reg", delta_color="inverse")
+        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%", delta=f"-{diff_mape:.2f}% vs Linear Reg", delta_color="inverse")
+        m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}", delta=f"-${diff_rmse:,.0f} vs Linear Reg", delta_color="inverse")
 
         section_q("BẢNG SO SÁNH HIỆU NĂNG GIỮA 2 THUẬT TOÁN",
                   "So sánh chi tiết hiệu năng giữa mô hình học máy đề xuất (CatBoost Regressor) và mô hình hồi quy tuyến tính cơ sở (Linear Regression).")
