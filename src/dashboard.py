@@ -1202,47 +1202,56 @@ with tab4:
 
         m1, m2, m3, m4 = st.columns(4)
         r2_val = cb_m.get('R2', 0.5616)
-        mae_val = cb_m.get('MAE', 260831)
+        mae_val = cb_m.get('MAE', 260831.25)
         mape_val = cb_m.get('MAPE', 43.53)
-        rmse_val = cb_m.get('RMSE', 403632)
+        rmse_val = cb_m.get('RMSE', 403632.24)
 
-        lr_r2 = lr_m.get('R2', 0.3165)
-        lr_mae = lr_m.get('MAE', 363171)
-        lr_mape = lr_m.get('MAPE', 94.40)
-        lr_rmse = lr_m.get('RMSE', 485764)
+        lr_r2 = lr_m.get('R2', 0.2481)
+        lr_mae = lr_m.get('MAE', 365022.07)
+        lr_mape = lr_m.get('MAPE', 61.81)
+        lr_rmse = lr_m.get('RMSE', 528606.60)
 
         diff_r2 = (r2_val - lr_r2) * 100
         diff_mae = lr_mae - mae_val
         diff_mape = lr_mape - mape_val
         diff_rmse = lr_rmse - rmse_val
 
-        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta=f"+{diff_r2:.1f}% vs Linear Reg")
+        m1.metric("R² Score (Độ giải thích)", f"{r2_val*100:.1f}%", delta=f"+{diff_r2:.2f}% vs Linear Reg")
         m2.metric("Sai số trung bình (MAE)", f"${mae_val:,.0f}", delta=f"-${diff_mae:,.0f} so với Baseline", delta_color="inverse")
-        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%", delta=f"-{diff_mape:.1f}% so với Baseline", delta_color="inverse")
+        m3.metric("Tỷ lệ lệch TB (MAPE)", f"{mape_val:.1f}%", delta=f"-{diff_mape:.2f}% so với Baseline", delta_color="inverse")
         m4.metric("Căn sai số (RMSE)", f"${rmse_val:,.0f}", delta=f"-${diff_rmse:,.0f} so với Baseline", delta_color="inverse")
 
-        section_q("Bảng đối chiếu hiệu năng các mô hình học máy (Model Benchmark)",
-                  "So sánh hiệu năng trên cùng tập kiểm thử độc lập (20% dữ liệu thực tế 2025-2026).")
+        section_q("BẢNG SO SÁNH HIỆU NĂNG GIỮA 2 THUẬT TOÁN",
+                  "So sánh chi tiết hiệu năng giữa mô hình học máy đề xuất (CatBoost Regressor) và mô hình hồi quy tuyến tính cơ sở (Linear Regression).")
         
-        rows4 = [
+        comp_rows = [
             {
-                'Mô hình Machine Learning': '🏆 CatBoost Regressor (Mô hình chính thức)',
-                'Điểm R²': f"{cb_m.get('R2', 0.5616):.4f} ({cb_m.get('R2', 0.5616)*100:.1f}%)",
-                'Sai số tuyệt đối (MAE)': f"${cb_m.get('MAE', 260831):,.0f}",
-                'Căn bậc hai sai số (RMSE)': f"${cb_m.get('RMSE', 403632):,.0f}",
-                'Tỷ lệ lệch (MAPE)': f"{cb_m.get('MAPE', 43.53):.2f}%",
-                'Đánh giá': '⭐ Tối ưu nhất (R² cao nhất, MAE thấp nhất)'
+                'Chỉ số đánh giá (Metric)': 'Hệ số xác định R² (Độ chính xác)',
+                'CatBoost Regressor (Đề xuất)': f"{cb_m.get('R2', 0.5616):.4f} ({cb_m.get('R2', 0.5616)*100:.2f}%)",
+                'Linear Regression (Cơ sở)': f"{lr_m.get('R2', 0.2481):.4f} ({lr_m.get('R2', 0.2481)*100:.2f}%)",
+                'Mức độ cải thiện của CatBoost': f"+{(cb_m.get('R2', 0.5616) - lr_m.get('R2', 0.2481))*100:.2f}% (Tốt hơn)"
             },
             {
-                'Mô hình Machine Learning': '📈 Linear Regression (Baseline so sánh)',
-                'Điểm R²': f"{lr_m.get('R2', 0.3165):.4f} ({lr_m.get('R2', 0.3165)*100:.1f}%)",
-                'Sai số tuyệt đối (MAE)': f"${lr_m.get('MAE', 363171):,.0f}",
-                'Căn bậc hai sai số (RMSE)': f"${lr_m.get('RMSE', 485764):,.0f}",
-                'Tỷ lệ lệch (MAPE)': f"{lr_m.get('MAPE', 94.4):.2f}%",
-                'Đánh giá': ' Cơ sở so sánh tuyến tính'
+                'Chỉ số đánh giá (Metric)': 'MAE (Sai số tuyệt đối trung bình)',
+                'CatBoost Regressor (Đề xuất)': f"${cb_m.get('MAE', 260831.25):,.2f}",
+                'Linear Regression (Cơ sở)': f"${lr_m.get('MAE', 365022.07):,.2f}",
+                'Mức độ cải thiện của CatBoost': f"-${(lr_m.get('MAE', 365022.07) - cb_m.get('MAE', 260831.25)):,.2f} (Giảm sai số)"
+            },
+            {
+                'Chỉ số đánh giá (Metric)': 'RMSE (Sai số bình phương trung bình)',
+                'CatBoost Regressor (Đề xuất)': f"${cb_m.get('RMSE', 403632.24):,.2f}",
+                'Linear Regression (Cơ sở)': f"${lr_m.get('RMSE', 528606.60):,.2f}",
+                'Mức độ cải thiện của CatBoost': f"-${(lr_m.get('RMSE', 528606.60) - cb_m.get('RMSE', 403632.24)):,.2f} (Giảm sai số)"
+            },
+            {
+                'Chỉ số đánh giá (Metric)': 'MAPE (Tỷ lệ sai số phần trăm)',
+                'CatBoost Regressor (Đề xuất)': f"{cb_m.get('MAPE', 43.53):.2f}%",
+                'Linear Regression (Cơ sở)': f"{lr_m.get('MAPE', 61.81):.2f}%",
+                'Mức độ cải thiện của CatBoost': f"-{(lr_m.get('MAPE', 61.81) - cb_m.get('MAPE', 43.53)):.2f}% (Chính xác hơn)"
             }
         ]
-        st.dataframe(pd.DataFrame(rows4).set_index('Mô hình Machine Learning'), width='stretch')
+        df_comp = pd.DataFrame(comp_rows)
+        st.dataframe(df_comp, width='stretch', hide_index=False)
 
         divider()
         ci1, ci2 = st.columns(2)
@@ -1258,31 +1267,46 @@ with tab4:
                     'year_built': 'Năm xây dựng',
                     'neighborhood': 'Khu vực / Phường (Neighborhood)',
                     'building_category': 'Phân loại công trình',
+                    'building_class_present': 'Hạng công trình hiện tại',
+                    'building_class_category': 'Phân nhóm công trình',
                     'building_class_at_time_of_sale': 'Hạng bất động sản',
+                    'building_class_sale': 'Hạng công trình khi bán',
+                    'tax_class_present': 'Hạng thuế bất động sản',
+                    'tax_class_sale': 'Hạng thuế khi bán',
+                    'tax_class_at_time_of_sale': 'Hạng thuế giao dịch',
                     'borough_name': 'Quận (Borough)',
-                    'borough': 'Mã quận',
+                    'borough': 'Quận',
+                    'block': 'Mã khối phố (Block)',
+                    'lot': 'Mã lô đất (Lot)',
+                    'zip_code': 'Mã bưu chính (Zipcode)',
                     'sale_month': 'Tháng giao dịch',
                     'sale_quarter': 'Quý giao dịch',
                     'sale_year': 'Năm giao dịch',
                     'total_units_calculated': 'Tổng số căn hộ',
+                    'total_units': 'Tổng số căn hộ',
                     'residential_units': 'Số căn hộ để ở',
                     'commercial_units': 'Số căn hộ thương mại',
                     'gross_per_unit': 'Diện tích TB / căn',
-                    'tax_class_at_time_of_sale': 'Hạng thuế giao dịch'
+                    'pop_density': 'Mật độ dân số khu vực',
+                    'amenity_score': 'Điểm tiện ích xung quanh',
+                    'avg_income': 'Thu nhập bình quân khu vực',
+                    'dist_center': 'Khoảng cách trung tâm'
                 }
                 imp4s['Tên'] = imp4s['Feature'].map(lambda f: imp_name_map.get(f, FEATURE_LABELS.get(f, f)))
                 imp4s = imp4s.sort_values('Importance', ascending=True)
+                max_imp_val = imp4s['Importance'].max()
                 fig_i = px.bar(imp4s, x='Importance', y='Tên', orientation='h',
                                color='Importance', color_continuous_scale='Purples',
                                text=imp4s['Importance'].apply(lambda v: f'{v*100:.1f}%'),
                                labels={'Importance': 'Tỷ lệ phần trăm đóng góp', 'Tên': 'Đặc trưng'},
                                title='Top 15 Yếu tố quan trọng nhất (CatBoost Feature Importance)')
-                fig_i.update_traces(textposition='outside')
-                clayout(fig_i, h=400, t=40, b=10, r=80)
+                fig_i.update_traces(textposition='outside', cliponaxis=False)
+                clayout(fig_i, h=430, t=35, b=10, r=40, l=10)
                 fig_i.update_layout(coloraxis_showscale=False,
                                     title_font=dict(size=13, color='#374151'),
-                                    xaxis=dict(tickformat='.0%', automargin=True, title='Mức độ quan trọng (%)'),
-                                    yaxis=dict(automargin=True, title=''))
+                                    xaxis=dict(tickformat='.0%', automargin=True, title='Mức độ quan trọng (%)', range=[0, max_imp_val * 1.30]),
+                                    yaxis=dict(automargin=True, title=''),
+                                    margin=dict(r=45, l=10, t=35, b=20))
                 st.plotly_chart(fig_i, width='stretch')
         with ci2:
             section_q("Độ chính xác: Giá AI dự báo vs Giá thực tế","Phân bố các giao dịch kiểm thử và đường chuẩn lý tưởng y = x")
