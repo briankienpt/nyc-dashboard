@@ -1604,14 +1604,6 @@ with tab4:
                 'Căn bậc hai sai số (RMSE)': f"${rf_m.get('RMSE', 437435):,.0f}",
                 'Tỷ lệ lệch (MAPE)': f"{rf_m.get('MAPE', 71.95):.2f}%",
                 'Đánh giá': ' Khá tốt'
-            },
-            {
-                'Mô hình Machine Learning': '📈 Linear Regression (Baseline)',
-                'Điểm R²': f"{lr_m.get('R2', 0.3165):.4f} ({lr_m.get('R2', 0.3165)*100:.1f}%)",
-                'Sai số tuyệt đối (MAE)': f"${lr_m.get('MAE', 363171):,.0f}",
-                'Căn bậc hai sai số (RMSE)': f"${lr_m.get('RMSE', 485764):,.0f}",
-                'Tỷ lệ lệch (MAPE)': f"{lr_m.get('MAPE', 94.4):.2f}%",
-                'Đánh giá': ' Cơ sở so sánh'
             }
         ]
         st.dataframe(pd.DataFrame(rows4).set_index('Mô hình Machine Learning'), width='stretch')
