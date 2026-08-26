@@ -1045,34 +1045,64 @@ with tab1:
             color_scale = "Viridis"
             z_title = "Số giao dịch"
 
-        fig_map = px.density_mapbox(
-            geo_df,
-            lat='lat',
-            lon='lon',
-            z=target_z,
-            radius=radius_val,
-            center=dict(lat=40.7400, lon=-73.9400),
-            zoom=zoom_val,
-            mapbox_style="open-street-map",
-            color_continuous_scale=color_scale,
-            hover_name="neighborhood",
-            hover_data={
-                "borough_name": True,
-                "med_price": ":$,.0f",
-                "med_ppsf_clean": ":$,.0f",
-                "n_count": ":,",
-                "lat": ":.4f",
-                "lon": ":.4f"
-            },
-            labels={
-                "borough_name": "Quận",
-                "med_price": "Giá trung vị",
-                "med_ppsf_clean": "Giá/sqft",
-                "n_count": "Số GD",
-                "lat": "Latitude",
-                "lon": "Longitude"
-            }
-        )
+        try:
+            fig_map = px.density_map(
+                geo_df,
+                lat='lat',
+                lon='lon',
+                z=target_z,
+                radius=radius_val,
+                center=dict(lat=40.7400, lon=-73.9400),
+                zoom=zoom_val,
+                map_style="open-street-map",
+                color_continuous_scale=color_scale,
+                hover_name="neighborhood",
+                hover_data={
+                    "borough_name": True,
+                    "med_price": ":$,.0f",
+                    "med_ppsf_clean": ":$,.0f",
+                    "n_count": ":,",
+                    "lat": ":.4f",
+                    "lon": ":.4f"
+                },
+                labels={
+                    "borough_name": "Quận",
+                    "med_price": "Giá trung vị",
+                    "med_ppsf_clean": "Giá/sqft",
+                    "n_count": "Số GD",
+                    "lat": "Latitude",
+                    "lon": "Longitude"
+                }
+            )
+        except (AttributeError, TypeError):
+            fig_map = px.density_mapbox(
+                geo_df,
+                lat='lat',
+                lon='lon',
+                z=target_z,
+                radius=radius_val,
+                center=dict(lat=40.7400, lon=-73.9400),
+                zoom=zoom_val,
+                mapbox_style="open-street-map",
+                color_continuous_scale=color_scale,
+                hover_name="neighborhood",
+                hover_data={
+                    "borough_name": True,
+                    "med_price": ":$,.0f",
+                    "med_ppsf_clean": ":$,.0f",
+                    "n_count": ":,",
+                    "lat": ":.4f",
+                    "lon": ":.4f"
+                },
+                labels={
+                    "borough_name": "Quận",
+                    "med_price": "Giá trung vị",
+                    "med_ppsf_clean": "Giá/sqft",
+                    "n_count": "Số GD",
+                    "lat": "Latitude",
+                    "lon": "Longitude"
+                }
+            )
         clayout(fig_map, h=520, t=10, b=10, l=10, r=10)
         fig_map.update_layout(
             title_text="",
@@ -2221,8 +2251,3 @@ with tab_search:
                             """, unsafe_allow_html=True)
             else:
                 st.info(" Hãy điều chỉnh bộ lọc và bấm **Tìm Kiếm Comps**")
-
-
-
-
-
