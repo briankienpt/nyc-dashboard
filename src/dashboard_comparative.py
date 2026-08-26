@@ -635,62 +635,26 @@ with tab0:
     bor_med = df.groupby('borough_name')['sale_price'].median().reindex(BOROUGH_ORDER).dropna().reset_index()
     bor_med.columns = ['Borough','Giá trung vị']
 
-    ca, cb = st.columns(2, gap="medium")
+    ca, cb = st.columns(2)
     with ca:
-        max_cnt = bor_cnt['Giao dịch'].max() if len(bor_cnt) > 0 else 1000
         fig = px.bar(bor_cnt.sort_values('Giao dịch'), x='Giao dịch', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS, text='Giao dịch',
-                     labels={'Borough':'Quận', 'Giao dịch':'Số giao dịch'})
-        fig.update_traces(texttemplate=' <b>%{text:,}</b>', textposition='outside',
-                          textfont=dict(size=13, color='#0f172a', family='Inter'),
-                          cliponaxis=False)
-        fig.update_layout(
-            autosize=True,
-            height=350,
-            margin=dict(l=95, r=25, t=30, b=45, pad=0),
-            barmode='overlay',
-            bargap=0.20,
-            bargroupgap=0,
-            plot_bgcolor='rgba(250,250,250,0.6)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            showlegend=False,
-            title=dict(text="<b>Số giao dịch theo quận</b>", font=dict(size=16, color='#0f172a', family='Inter'), x=0.0, y=0.98, xanchor='left', yanchor='top'),
-            yaxis=dict(automargin=False, title=None,
-                       tickfont=dict(size=14, color='#1e293b', family='Inter')),
-            xaxis=dict(automargin=True,
-                       title=dict(text='<b>Số giao dịch</b>', font=dict(size=13, color='#475569', family='Inter'), standoff=6),
-                       tickfont=dict(size=12, color='#475569', family='Inter'),
-                       range=[0, max_cnt * 1.12])
-        )
-        st.plotly_chart(fig, use_container_width=True)
+                     title="Số giao dịch theo quận")
+        fig.update_traces(texttemplate='%{text:,}', textposition='auto')
+        clayout(fig, h=280, t=40, r=80)
+        fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(automargin=True, title='Số giao dịch'),
+                          title_font=dict(size=13, color='#374151'))
+        st.plotly_chart(fig, width='stretch')
     with cb:
-        max_med = bor_med['Giá trung vị'].max() if len(bor_med) > 0 else 1000000
         fig = px.bar(bor_med.sort_values('Giá trung vị'), x='Giá trung vị', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS,
                      text=bor_med.sort_values('Giá trung vị')['Giá trung vị'].apply(fmt_M),
-                     labels={'Borough':'Quận', 'Giá trung vị':'Giá trung vị ($)'})
-        fig.update_traces(texttemplate=' <b>%{text}</b>', textposition='outside',
-                          textfont=dict(size=13, color='#0f172a', family='Inter'),
-                          cliponaxis=False)
-        fig.update_layout(
-            autosize=True,
-            height=350,
-            margin=dict(l=95, r=25, t=30, b=45, pad=0),
-            barmode='overlay',
-            bargap=0.20,
-            bargroupgap=0,
-            plot_bgcolor='rgba(250,250,250,0.6)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            showlegend=False,
-            title=dict(text="<b>Giá trung vị theo quận ($)</b>", font=dict(size=16, color='#0f172a', family='Inter'), x=0.0, y=0.98, xanchor='left', yanchor='top'),
-            yaxis=dict(automargin=False, title=None,
-                       tickfont=dict(size=14, color='#1e293b', family='Inter')),
-            xaxis=dict(tickformat='$,.0f', automargin=True,
-                       title=dict(text='<b>Giá trung vị ($)</b>', font=dict(size=13, color='#475569', family='Inter'), standoff=6),
-                       tickfont=dict(size=12, color='#475569', family='Inter'),
-                       range=[0, max_med * 1.12])
-        )
-        st.plotly_chart(fig, use_container_width=True)
+                     title="Giá trung vị theo quận ($)")
+        fig.update_traces(textposition='auto')
+        clayout(fig, h=280, t=40, r=100)
+        fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
+                          title_font=dict(size=13, color='#374151'))
+        st.plotly_chart(fig, width='stretch')
 
     divider()
     section_q("Thị trường đang tập trung vào loại hình bất động sản nào?",
@@ -858,7 +822,7 @@ with tab1:
     geo_df['lon'] = [c[1] for c in coords_list]
     geo_df['med_ppsf_clean'] = geo_df['med_ppsf'].fillna(0)
 
-    mc1, mc2, mc3, mc4 = st.columns([2, 1, 1, 1])
+    mc1, mc2, mc3 = st.columns([2, 1, 1])
     with mc1:
         map_metric = st.radio(
             "Hiển thị điểm nóng theo:",
@@ -866,22 +830,9 @@ with tab1:
             horizontal=True
         )
     with mc2:
-        map_theme = st.selectbox(
-            "Lớp bản đồ nền:",
-            options=["🌐 OpenStreetMap", "🗺️ Carto Positron (Sáng)", "🌑 Carto Dark (Tối)"],
-            index=0, key="hm_theme_comp"
-        )
+        radius_val = st.slider("Bán kính điểm nhiệt (Radius)", 15, 45, 25)
     with mc3:
-        radius_val = st.slider("Bán kính điểm nhiệt", 15, 45, 25)
-    with mc4:
         zoom_val = st.slider("Độ phóng đại (Zoom)", 9, 13, 10)
-
-    style_map = {
-        "🌐 OpenStreetMap": "open-street-map",
-        "🗺️ Carto Positron (Sáng)": "carto-positron",
-        "🌑 Carto Dark (Tối)": "carto-darkmatter"
-    }
-    chosen_style = style_map.get(map_theme, "open-street-map")
 
     if map_metric == "🔥 Giá trung vị ($)":
         target_z = 'med_price'
@@ -896,60 +847,32 @@ with tab1:
         color_scale = "Viridis"
         z_title = "Số giao dịch"
 
-    try:
-        fig_map = px.density_map(
-            geo_df,
-            lat='lat',
-            lon='lon',
-            z=target_z,
-            radius=radius_val,
-            center=dict(lat=40.7400, lon=-73.9400),
-            zoom=zoom_val,
-            map_style=chosen_style,
-            color_continuous_scale=color_scale,
-            hover_name="neighborhood",
-            hover_data={
-                "borough_name": True,
-                "med_price": ":$,.0f",
-                "med_ppsf_clean": ":$,.0f",
-                "n_count": ":,",
-                "lat": False,
-                "lon": False
-            },
-            labels={
-                "borough_name": "Quận",
-                "med_price": "Giá trung vị",
-                "med_ppsf_clean": "Giá/sqft",
-                "n_count": "Số GD"
-            }
-        )
-    except (AttributeError, TypeError):
-        fig_map = px.density_mapbox(
-            geo_df,
-            lat='lat',
-            lon='lon',
-            z=target_z,
-            radius=radius_val,
-            center=dict(lat=40.7400, lon=-73.9400),
-            zoom=zoom_val,
-            mapbox_style=chosen_style,
-            color_continuous_scale=color_scale,
-            hover_name="neighborhood",
-            hover_data={
-                "borough_name": True,
-                "med_price": ":$,.0f",
-                "med_ppsf_clean": ":$,.0f",
-                "n_count": ":,",
-                "lat": False,
-                "lon": False
-            },
-            labels={
-                "borough_name": "Quận",
-                "med_price": "Giá trung vị",
-                "med_ppsf_clean": "Giá/sqft",
-                "n_count": "Số GD"
-            }
-        )
+    fig_map = px.density_mapbox(
+        geo_df,
+        lat='lat',
+        lon='lon',
+        z=target_z,
+        radius=radius_val,
+        center=dict(lat=40.7400, lon=-73.9400),
+        zoom=zoom_val,
+        mapbox_style="open-street-map",
+        color_continuous_scale=color_scale,
+        hover_name="neighborhood",
+        hover_data={
+            "borough_name": True,
+            "med_price": ":$,.0f",
+            "med_ppsf_clean": ":$,.0f",
+            "n_count": ":,",
+            "lat": False,
+            "lon": False
+        },
+        labels={
+            "borough_name": "Quận",
+            "med_price": "Giá trung vị",
+            "med_ppsf_clean": "Giá/sqft",
+            "n_count": "Số GD"
+        }
+    )
     clayout(fig_map, h=520, t=10, b=10, l=10, r=10)
     fig_map.update_layout(
         coloraxis_colorbar=dict(title=z_title, len=0.8)
@@ -1013,8 +936,7 @@ with tab1:
         fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                           xaxis=dict(automargin=True, title='Số giao dịch'),
                           legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
-                          title_font=dict(size=13, color='#374151'),
-                          barmode='overlay', bargap=0.25)
+                          title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig, width='stretch')
     with cn2:
         if len(df_ppsf) > 0:
@@ -1034,8 +956,7 @@ with tab1:
             fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                               xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
                               legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
-                              title_font=dict(size=13, color='#374151'),
-                              barmode='overlay', bargap=0.25)
+                              title_font=dict(size=13, color='#374151'))
             st.plotly_chart(fig, width='stretch')
         else:
             st.info("Không đủ dữ liệu giá/sqft.")

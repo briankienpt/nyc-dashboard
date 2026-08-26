@@ -1777,61 +1777,32 @@ with tab1:
             }
         )
     else:
-        try:
-            map_style_val = selected_style if selected_style in ["open-street-map", "carto-positron", "carto-darkmatter"] else "open-street-map"
-            fig_map = px.density_map(
-                geo_df,
-                lat='lat',
-                lon='lon',
-                z=target_z,
-                radius=radius_val,
-                center=dict(lat=c_lat, lon=c_lon),
-                zoom=zoom_val,
-                map_style=map_style_val,
-                color_continuous_scale=color_scale,
-                hover_name="neighborhood",
-                hover_data={
-                    "borough_name": True,
-                    "med_price": ":$,.0f",
-                    "med_ppsf_clean": ":$,.0f",
-                    "n_count": ":,",
-                    "lat": False,
-                    "lon": False
-                },
-                labels={
-                    "borough_name": "Quận",
-                    "med_price": "Giá trung vị",
-                    "med_ppsf_clean": "Giá/sqft",
-                    "n_count": "Số GD"
-                }
-            )
-        except (AttributeError, TypeError):
-            fig_map = px.density_mapbox(
-                geo_df,
-                lat='lat',
-                lon='lon',
-                z=target_z,
-                radius=radius_val,
-                center=dict(lat=c_lat, lon=c_lon),
-                zoom=zoom_val,
-                mapbox_style=selected_style,
-                color_continuous_scale=color_scale,
-                hover_name="neighborhood",
-                hover_data={
-                    "borough_name": True,
-                    "med_price": ":$,.0f",
-                    "med_ppsf_clean": ":$,.0f",
-                    "n_count": ":,",
-                    "lat": False,
-                    "lon": False
-                },
-                labels={
-                    "borough_name": "Quận",
-                    "med_price": "Giá trung vị",
-                    "med_ppsf_clean": "Giá/sqft",
-                    "n_count": "Số GD"
-                }
-            )
+        fig_map = px.density_mapbox(
+            geo_df,
+            lat='lat',
+            lon='lon',
+            z=target_z,
+            radius=radius_val,
+            center=dict(lat=c_lat, lon=c_lon),
+            zoom=zoom_val,
+            mapbox_style=selected_style,
+            color_continuous_scale=color_scale,
+            hover_name="neighborhood",
+            hover_data={
+                "borough_name": True,
+                "med_price": ":$,.0f",
+                "med_ppsf_clean": ":$,.0f",
+                "n_count": ":,",
+                "lat": False,
+                "lon": False
+            },
+            labels={
+                "borough_name": "Quận",
+                "med_price": "Giá trung vị",
+                "med_ppsf_clean": "Giá/sqft",
+                "n_count": "Số GD"
+            }
+        )
     clayout(fig_map, h=560, t=10, b=10, l=10, r=10)
     fig_map.update_layout(
         title_text="",
