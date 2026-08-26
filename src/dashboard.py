@@ -780,7 +780,9 @@ with tab1:
         color_scale = "Viridis"
         z_title = "Số giao dịch"
 
-    fig_map = px.density_mapbox(
+    map_func = getattr(px, 'density_mapbox', None) or getattr(px, 'density_map', None)
+    style_key = "mapbox_style" if hasattr(px, 'density_mapbox') else "map_style"
+    fig_map = map_func(
         geo_df,
         lat='lat',
         lon='lon',
@@ -788,7 +790,7 @@ with tab1:
         radius=radius_val,
         center=dict(lat=40.7400, lon=-73.9400),
         zoom=zoom_val,
-        mapbox_style="open-street-map",
+        **{style_key: "open-street-map"},
         color_continuous_scale=color_scale,
         hover_name="neighborhood",
         hover_data={
