@@ -789,7 +789,7 @@ with tab1:
             radius=radius_val,
             center=dict(lat=40.7400, lon=-73.9400),
             zoom=zoom_val,
-            map_style="open-street-map",
+            map_style="carto-positron",
             color_continuous_scale=color_scale,
             hover_name="neighborhood",
             hover_data={
@@ -816,7 +816,7 @@ with tab1:
             radius=radius_val,
             center=dict(lat=40.7400, lon=-73.9400),
             zoom=zoom_val,
-            mapbox_style="open-street-map",
+            mapbox_style="carto-positron",
             color_continuous_scale=color_scale,
             hover_name="neighborhood",
             hover_data={
