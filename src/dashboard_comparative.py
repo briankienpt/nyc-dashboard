@@ -637,27 +637,46 @@ with tab0:
 
     ca, cb = st.columns(2)
     with ca:
+        max_cnt = bor_cnt['Giao dịch'].max() if len(bor_cnt) > 0 else 1000
         fig = px.bar(bor_cnt.sort_values('Giao dịch'), x='Giao dịch', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS, text='Giao dịch',
                      labels={'Borough':'Quận', 'Giao dịch':'Số giao dịch'},
-                     title="Số giao dịch theo quận")
-        fig.update_traces(texttemplate='%{text:,}', textposition='auto')
-        clayout(fig, h=300, t=40, r=80)
-        fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(automargin=True, title='Số giao dịch'),
-                          title_font=dict(size=13, color='#374151'),
-                          barmode='overlay', bargap=0.25)
+                     title="<b>Số giao dịch theo quận</b>")
+        fig.update_traces(texttemplate='%{text:,}', textposition='outside',
+                          textfont=dict(size=13, color='#0f172a', family='Inter'),
+                          cliponaxis=False)
+        clayout(fig, h=330, t=35, b=20, l=10, r=45)
+        fig.update_layout(
+            barmode='overlay', bargap=0.20,
+            title_font=dict(size=16, color='#0f172a', family='Inter'),
+            yaxis=dict(automargin=True, title=dict(text='Quận', font=dict(size=14, color='#1e293b', family='Inter')),
+                       tickfont=dict(size=14, color='#1e293b', family='Inter')),
+            xaxis=dict(automargin=True, title=dict(text='Số giao dịch', font=dict(size=14, color='#1e293b', family='Inter')),
+                       tickfont=dict(size=13, color='#334155', family='Inter'),
+                       range=[0, max_cnt * 1.15])
+        )
         st.plotly_chart(fig, width='stretch')
     with cb:
+        max_med = bor_med['Giá trung vị'].max() if len(bor_med) > 0 else 1000000
         fig = px.bar(bor_med.sort_values('Giá trung vị'), x='Giá trung vị', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS,
                      text=bor_med.sort_values('Giá trung vị')['Giá trung vị'].apply(fmt_M),
                      labels={'Borough':'Quận', 'Giá trung vị':'Giá trung vị ($)'},
-                     title="Giá trung vị theo quận ($)")
-        fig.update_traces(textposition='auto')
-        clayout(fig, h=300, t=40, r=100)
-        fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
-                          title_font=dict(size=13, color='#374151'),
-                          barmode='overlay', bargap=0.25)
+                     title="<b>Giá trung vị theo quận ($)</b>")
+        fig.update_traces(textposition='outside',
+                          textfont=dict(size=13, color='#0f172a', family='Inter'),
+                          cliponaxis=False)
+        clayout(fig, h=330, t=35, b=20, l=10, r=45)
+        fig.update_layout(
+            barmode='overlay', bargap=0.20,
+            title_font=dict(size=16, color='#0f172a', family='Inter'),
+            yaxis=dict(automargin=True, title=dict(text='Quận', font=dict(size=14, color='#1e293b', family='Inter')),
+                       tickfont=dict(size=14, color='#1e293b', family='Inter')),
+            xaxis=dict(tickformat='$,.0f', automargin=True,
+                       title=dict(text='Giá trung vị ($)', font=dict(size=14, color='#1e293b', family='Inter')),
+                       tickfont=dict(size=13, color='#334155', family='Inter'),
+                       range=[0, max_med * 1.15])
+        )
         st.plotly_chart(fig, width='stretch')
 
     divider()
