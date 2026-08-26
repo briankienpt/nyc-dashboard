@@ -2221,36 +2221,3 @@ with tab_search:
                             """, unsafe_allow_html=True)
             else:
                 st.info(" Hãy điều chỉnh bộ lọc và bấm **Tìm Kiếm Comps**")
-
-
-
-
-
-                        for idx, row in comps_in_zip.iterrows():
-                            # HTML Card
-                            school_tag = " Trường học" if row['has_school_1km'] else ""
-                            subway_tag = " Ga Tàu" if row['has_subway_1km'] else ""
-                            park_tag = " Công viên" if row['has_park_1km'] else ""
-                            market_tag = " Siêu thị" if row.get('has_supermarket_1km') else ""
-                            hosp_tag = " Bệnh viện" if row.get('has_hospital_1km') else ""
-                            tags = " | ".join(filter(None, [school_tag, subway_tag, park_tag, market_tag, hosp_tag]))
-                            
-                            st.markdown(f"""
-                            <div style='border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 12px; border-left: 4px solid #db2777; background: #fafafa;'>
-                                <h4 style='margin-top: 0; color: #1e293b;'> {row['address']}</h4>
-                                <div style='display: flex; justify-content: space-between; font-size: 14px;'>
-                                    <div><b>Phân khúc:</b> {row['building_class_category']}</div>
-                                    <div style='color: #059669; font-weight: bold;'> ${row['sale_price']:,.0f}</div>
-                                </div>
-                                <div style='font-size: 13px; color: #64748b; margin-top: 8px;'>
-                                    <b>Tiện ích 1km:</b> {tags}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-            else:
-                st.info(" Hãy điều chỉnh bộ lọc và bấm **Tìm Kiếm Comps**")
-
-
-
-
-

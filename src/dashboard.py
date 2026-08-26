@@ -1257,32 +1257,3 @@ with tab4:
                     xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá thực ($)'),
                     yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá dự báo ($)'),
                     legend=dict(font_size=11))
-                st.plotly_chart(fig_av4, width='stretch')
-                                    title_font=dict(size=13, color='#374151'),
-                                    xaxis=dict(tickformat='.0%', automargin=True, title='Mức độ quan trọng'),
-                                    yaxis=dict(automargin=True, title=''))
-                st.plotly_chart(fig_i, width='stretch')
-        with ci2:
-            section_q("Dự báo sát thực tế đến mức nào?","")
-            if pred_df4 is not None:
-                pp4 = pred_df4.sample(n=min(1500,len(pred_df4)), random_state=42)
-                fig_av4 = px.scatter(pp4, x='Actual', y='Predicted', opacity=0.4,
-                                     color_discrete_sequence=[C_BLUE2],
-                                     labels={'Actual':'Giá thực ($)','Predicted':'Giá dự báo ($)'},
-                                     title='Dự báo vs Thực tế — Độ chính xác mô hình Random Forest',
-                                     trendline='ols')
-                # Đặt tên cho OLS trendline trace để tránh 'undefined' trong legend
-                for trace in fig_av4.data:
-                    if hasattr(trace, 'name') and trace.name and 'OLS' in str(trace.name):
-                        trace.name = 'Xu hướng OLS'
-                vm4 = max(pred_df4['Actual'].max(), pred_df4['Predicted'].max())
-                fig_av4.add_trace(go.Scatter(x=[0,vm4], y=[0,vm4], mode='lines',
-                                             name='Lý tưởng (y=x)',
-                                             line=dict(color=C_RED, dash='dash', width=1.5)))
-                clayout(fig_av4, h=360, t=40, b=10, leg=True)
-                fig_av4.update_layout(
-                    title_font=dict(size=13, color='#374151'),
-                    xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá thực ($)'),
-                    yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá dự báo ($)'),
-                    legend=dict(font_size=11))
-                st.plotly_chart(fig_av4, width='stretch')
