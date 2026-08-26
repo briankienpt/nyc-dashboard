@@ -561,20 +561,24 @@ with tab0:
     with ca:
         fig = px.bar(bor_cnt.sort_values('Giao dịch'), x='Giao dịch', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS, text='Giao dịch',
+                     barmode='overlay',
                      title="Số giao dịch theo quận")
         fig.update_traces(texttemplate='%{text:,}', textposition='auto')
         clayout(fig, h=280, t=40, r=80)
         fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(automargin=True, title='Số giao dịch'),
+                          barmode='overlay',
                           title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig, width='stretch')
     with cb:
         fig = px.bar(bor_med.sort_values('Giá trung vị'), x='Giá trung vị', y='Borough', orientation='h',
                      color='Borough', color_discrete_map=BOROUGH_COLORS,
+                     barmode='overlay',
                      text=bor_med.sort_values('Giá trung vị')['Giá trung vị'].apply(fmt_M),
                      title="Giá trung vị theo quận ($)")
         fig.update_traces(textposition='auto')
         clayout(fig, h=280, t=40, r=100)
         fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
+                          barmode='overlay',
                           title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig, width='stretch')
 
@@ -864,12 +868,14 @@ with tab1:
         t15c['Khu vực'] = t15c['neighborhood'].str.title().str[:25]
         fig = px.bar(t15c, x='Giao dịch', y='Khu vực', orientation='h',
                      color='borough_name', color_discrete_map=BOROUGH_COLORS, text='Giao dịch',
+                     barmode='overlay',
                      title="Top 15 khu vực nhiều giao dịch nhất",
                      labels={'borough_name':'Quận'})
         fig.update_traces(texttemplate='%{text:,}', textposition='auto')
         clayout(fig, h=460, t=40, b=20, r=80, leg=True)
         fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                           xaxis=dict(automargin=True, title='Số giao dịch'),
+                          barmode='overlay',
                           legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
                           title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig, width='stretch')
@@ -883,6 +889,7 @@ with tab1:
                 top_n_ppsf_row = t15p.iloc[-1]
             fig = px.bar(t15p, x='med_ppsf', y='Khu vực', orientation='h',
                          color='borough_name', color_discrete_map=BOROUGH_COLORS,
+                         barmode='overlay',
                          text=t15p['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
                          title="Top 15 khu vực giá/sqft cao nhất (trung vị)",
                          labels={'borough_name':'Quận','med_ppsf':'$/sqft (trung vị)'})
@@ -890,6 +897,7 @@ with tab1:
             clayout(fig, h=460, t=40, b=20, r=80, leg=True)
             fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                               xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
+                              barmode='overlay',
                               legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
                               title_font=dict(size=13, color='#374151'))
             st.plotly_chart(fig, width='stretch')
