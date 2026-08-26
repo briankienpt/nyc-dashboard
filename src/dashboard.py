@@ -755,7 +755,7 @@ with tab1:
     geo_df['lon'] = [c[1] for c in coords_list]
     geo_df['med_ppsf_clean'] = geo_df['med_ppsf'].fillna(0)
 
-    mc1, mc2, mc3 = st.columns([2, 1, 1])
+    mc1, mc2, mc3, mc4 = st.columns([2, 1, 1, 1])
     with mc1:
         map_metric = st.radio(
             "Hiển thị điểm nóng theo:",
@@ -763,9 +763,22 @@ with tab1:
             horizontal=True
         )
     with mc2:
-        radius_val = st.slider("Bán kính điểm nhiệt (Radius)", 15, 45, 25)
+        map_theme = st.selectbox(
+            "Lớp bản đồ nền:",
+            options=["🌐 OpenStreetMap", "🗺️ Carto Positron (Sáng)", "🌑 Carto Dark (Tối)"],
+            index=0, key="hm_theme_dash"
+        )
     with mc3:
+        radius_val = st.slider("Bán kính điểm nhiệt", 15, 45, 25)
+    with mc4:
         zoom_val = st.slider("Độ phóng đại (Zoom)", 9, 13, 10)
+
+    style_map = {
+        "🌐 OpenStreetMap": "open-street-map",
+        "🗺️ Carto Positron (Sáng)": "carto-positron",
+        "🌑 Carto Dark (Tối)": "carto-darkmatter"
+    }
+    chosen_style = style_map.get(map_theme, "open-street-map")
 
     if map_metric == "🔥 Giá trung vị ($)":
         target_z = 'med_price'
@@ -789,7 +802,7 @@ with tab1:
             radius=radius_val,
             center=dict(lat=40.7400, lon=-73.9400),
             zoom=zoom_val,
-            map_style="carto-positron",
+            map_style=chosen_style,
             color_continuous_scale=color_scale,
             hover_name="neighborhood",
             hover_data={
@@ -816,7 +829,7 @@ with tab1:
             radius=radius_val,
             center=dict(lat=40.7400, lon=-73.9400),
             zoom=zoom_val,
-            mapbox_style="carto-positron",
+            mapbox_style=chosen_style,
             color_continuous_scale=color_scale,
             hover_name="neighborhood",
             hover_data={
