@@ -795,9 +795,10 @@ with tab0:
                      labels={'Borough':'Quận', 'Giao dịch':'Số giao dịch'},
                      title="Số giao dịch theo quận")
         fig.update_traces(texttemplate='%{text:,}', textposition='auto')
-        clayout(fig, h=280, t=40, r=80)
+        clayout(fig, h=300, t=40, r=80)
         fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(automargin=True, title='Số giao dịch'),
-                          title_font=dict(size=13, color='#374151'))
+                          title_font=dict(size=13, color='#374151'),
+                          barmode='overlay', bargap=0.25)
         st.plotly_chart(fig, width='stretch')
     with cb:
         fig = px.bar(bor_med.sort_values('Giá trung vị'), x='Giá trung vị', y='Borough', orientation='h',
@@ -806,9 +807,10 @@ with tab0:
                      labels={'Borough':'Quận', 'Giá trung vị':'Giá trung vị ($)'},
                      title="Giá trung vị theo quận ($)")
         fig.update_traces(textposition='auto')
-        clayout(fig, h=280, t=40, r=100)
+        clayout(fig, h=300, t=40, r=100)
         fig.update_layout(yaxis=dict(automargin=True, title='Quận'), xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
-                          title_font=dict(size=13, color='#374151'))
+                          title_font=dict(size=13, color='#374151'),
+                          barmode='overlay', bargap=0.25)
         st.plotly_chart(fig, width='stretch')
 
     divider()
@@ -1175,7 +1177,8 @@ with tab1:
         fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                           xaxis=dict(automargin=True, title='Số giao dịch'),
                           legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
-                          title_font=dict(size=13, color='#374151'))
+                          title_font=dict(size=13, color='#374151'),
+                          barmode='overlay', bargap=0.25)
         st.plotly_chart(fig, width='stretch')
     with cn2:
         # price_per_sqft_real có thể được dùng nếu price_per_sqft thiếu
@@ -1199,7 +1202,8 @@ with tab1:
                 fig.update_layout(yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
                                   xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
                                   legend=dict(orientation='h', y=-0.1, x=0, font_size=11),
-                                  title_font=dict(size=13, color='#374151'))
+                                  title_font=dict(size=13, color='#374151'),
+                                  barmode='overlay', bargap=0.25)
                 st.plotly_chart(fig, width='stretch')
             else:
                 st.info("Không đủ dữ liệu giá/sqft sau khi lọc.")
