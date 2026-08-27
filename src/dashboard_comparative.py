@@ -12,7 +12,7 @@ import sqlite3
 # CẤU HÌNH TRANG
 # ════════════════════════════════════════════════════════════
 st.set_page_config(
-    page_title="[SQLite] Báo cáo Phân tích Thị trường Bất động sản NYC 2025 - 2026",
+    page_title="Xây dựng báo cáo phân tích dữ liệu giao dịch bất động sản tại New York giai đoạn 2025-2026 DP02",
     layout="wide",
     page_icon="🗄️",
     initial_sidebar_state="expanded",
@@ -567,7 +567,7 @@ h1, h2 = st.columns([4, 1])
 with h1:
     st.markdown("""
     <h1 style='font-size:24px;font-weight:800;color:#0f172a;margin:0'>
-    🏙️ BÁO CÁO PHÂN TÍCH THỊ TRƯỜNG BẤT ĐỘNG SẢN NEW YORK GIAI ĐOẠN 2025 - 2026
+    🏙️ XÂY DỰNG BÁO CÁO PHÂN TÍCH DỮ LIỆU GIAO DỊCH BẤT ĐỘNG SẢN TẠI NEW YORK GIAI ĐOẠN 2025-2026 DP02
     </h1>""", unsafe_allow_html=True)
 with h2:
     st.markdown(f"""
