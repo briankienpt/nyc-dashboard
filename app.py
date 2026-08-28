@@ -1137,6 +1137,17 @@ with tab1:
     section_q("Khu vực nào sôi động nhất và có giá/sqft cao nhất?",
               "Trái: số giao dịch (thanh khoản). Phải: giá/sqft trung vị (loại khu vực < 5 giao dịch để tránh sai lệch mẫu nhỏ).")
 
+    st.markdown("""
+    <div style='display:flex;gap:8px;align-items:center;margin-top:-6px;margin-bottom:14px;flex-wrap:wrap;'>
+        <span style='font-size:12px;font-weight:700;color:#475569;'>📍 Phân loại màu theo Cụm khu vực (Quận):</span>
+        <span style='background:rgba(99,102,241,0.12);color:#4f46e5;border:1px solid rgba(99,102,241,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;'>🟣 Manhattan</span>
+        <span style='background:rgba(14,165,233,0.12);color:#0284c7;border:1px solid rgba(14,165,233,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;'>🔵 Brooklyn</span>
+        <span style='background:rgba(16,185,129,0.12);color:#059669;border:1px solid rgba(16,185,129,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;'>🟢 Queens</span>
+        <span style='background:rgba(245,158,11,0.12);color:#d97706;border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;'>🟠 Bronx</span>
+        <span style='background:rgba(236,72,153,0.12);color:#db2777;border:1px solid rgba(236,72,153,0.3);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;'>🌸 Staten Island</span>
+    </div>
+    """, unsafe_allow_html=True)
+
     top_n_ppsf_row = None
     cn1, cn2 = st.columns(2)
     with cn1:
@@ -1145,24 +1156,37 @@ with tab1:
                 .sort_values('Giao dịch', ascending=False).head(15))
         t15c = t15c.sort_values('Giao dịch')
         t15c['Khu vực'] = t15c['neighborhood'].str.title().str[:25]
-        colors_t15c = [BOROUGH_COLORS.get(b, '#6366f1') for b in t15c['borough_name']]
-        fig = go.Figure(go.Bar(
-            x=t15c['Giao dịch'],
-            y=t15c['Khu vực'],
-            orientation='h',
-            marker=dict(color=colors_t15c),
-            text=t15c['Giao dịch'],
-            texttemplate='%{text:,}',
-            textposition='auto',
-            customdata=t15c['borough_name'],
-            hovertemplate='<b>%{y}</b> (%{customdata})<br>Số giao dịch: %{x:,}<extra></extra>'
-        ))
-        clayout(fig, h=460, t=40, b=20, r=80)
+        
+        fig = go.Figure()
+        for b_name in BOROUGH_ORDER:
+            sub = t15c[t15c['borough_name'] == b_name]
+            if len(sub) > 0:
+                fig.add_trace(go.Bar(
+                    x=sub['Giao dịch'],
+                    y=sub['Khu vực'],
+                    name=b_name,
+                    orientation='h',
+                    marker=dict(color=BOROUGH_COLORS.get(b_name, '#6366f1')),
+                    text=sub['Giao dịch'],
+                    texttemplate='%{text:,}',
+                    textposition='auto',
+                    customdata=sub['borough_name'],
+                    hovertemplate='<b>%{y}</b><br>Quận: <b>%{customdata}</b><br>Số giao dịch: <b>%{x:,}</b><extra></extra>'
+                ))
+        clayout(fig, h=480, t=40, b=20, r=80)
         fig.update_layout(
             title="Top 15 khu vực nhiều giao dịch nhất",
-            yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
+            barmode='stack',
+            yaxis=dict(
+                automargin=True, 
+                tickfont_size=11, 
+                title='Khu vực',
+                categoryorder='array',
+                categoryarray=t15c['Khu vực'].tolist()
+            ),
             xaxis=dict(automargin=True, title='Số giao dịch'),
-            title_font=dict(size=13, color='#374151')
+            title_font=dict(size=13, color='#374151'),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10))
         )
         st.plotly_chart(fig, width='stretch')
     with cn2:
@@ -1176,24 +1200,35 @@ with tab1:
             t15p['Khu vực'] = t15p['neighborhood'].str.title().str[:25]
             if len(t15p) > 0:
                 top_n_ppsf_row = t15p.iloc[-1]
-            if len(t15p) > 0:
-                colors_t15p = [BOROUGH_COLORS.get(b, '#6366f1') for b in t15p['borough_name']]
-                fig = go.Figure(go.Bar(
-                    x=t15p['med_ppsf'],
-                    y=t15p['Khu vực'],
-                    orientation='h',
-                    marker=dict(color=colors_t15p),
-                    text=t15p['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
-                    textposition='auto',
-                    customdata=t15p['borough_name'],
-                    hovertemplate='<b>%{y}</b> (%{customdata})<br>Giá/sqft: $%{x:,.0f}<extra></extra>'
-                ))
-                clayout(fig, h=460, t=40, b=20, r=80)
+                fig = go.Figure()
+                for b_name in BOROUGH_ORDER:
+                    sub = t15p[t15p['borough_name'] == b_name]
+                    if len(sub) > 0:
+                        fig.add_trace(go.Bar(
+                            x=sub['med_ppsf'],
+                            y=sub['Khu vực'],
+                            name=b_name,
+                            orientation='h',
+                            marker=dict(color=BOROUGH_COLORS.get(b_name, '#6366f1')),
+                            text=sub['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
+                            textposition='auto',
+                            customdata=sub['borough_name'],
+                            hovertemplate='<b>%{y}</b><br>Quận: <b>%{customdata}</b><br>Giá/sqft trung vị: <b>$%{x:,.0f}</b><extra></extra>'
+                        ))
+                clayout(fig, h=480, t=40, b=20, r=80)
                 fig.update_layout(
                     title="Top 15 khu vực giá/sqft cao nhất (trung vị)",
-                    yaxis=dict(automargin=True, tickfont_size=11, title='Khu vực'),
+                    barmode='stack',
+                    yaxis=dict(
+                        automargin=True, 
+                        tickfont_size=11, 
+                        title='Khu vực',
+                        categoryorder='array',
+                        categoryarray=t15p['Khu vực'].tolist()
+                    ),
                     xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
-                    title_font=dict(size=13, color='#374151')
+                    title_font=dict(size=13, color='#374151'),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10))
                 )
                 st.plotly_chart(fig, width='stretch')
             else:
