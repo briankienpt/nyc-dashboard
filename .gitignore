@@ -26,3 +26,4 @@ data/nyc_warehouse.db
 data/warehouse/nyc_warehouse.db
 !data/data clean/DATA.csv
 *.lock
+~$*

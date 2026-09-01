@@ -1312,9 +1312,9 @@ with tab0:
 
     k1.metric("Tổng giao dịch", f"{len(df):,}")
 
-    k2.metric("Giá trung vị",   fmt_M(med_price))
+    k2.metric("Giá trung bình",   fmt_M(med_price))
 
-    k3.metric("Giá/sqft (TV)",  f"${med_ppsf:,.0f}")
+    k3.metric("Giá/sqft (TB)",  f"${med_ppsf:,.0f}")
 
     k4.metric("Tổng giá trị",   f"${total_val/1e9:.1f}B")
 
@@ -1332,7 +1332,7 @@ with tab0:
 
         "Borough nào chiếm ưu thế — về thanh khoản và mặt bằng giá?",
 
-        "Số giao dịch = thanh khoản. Giá trung vị ít bị ảnh hưởng bởi outlier hơn giá trung bình."
+        "Số giao dịch = thanh khoản. Giá trung bình ít bị ảnh hưởng bởi outlier hơn giá trung bình."
 
     )
 
@@ -1348,7 +1348,7 @@ with tab0:
 
     bor_med = df.groupby('borough_name')['sale_price'].median().reindex(BOROUGH_ORDER).dropna().reset_index()
 
-    bor_med.columns = ['Borough','Giá trung vị']
+    bor_med.columns = ['Borough','Giá trung bình']
 
 
 
@@ -1375,60 +1375,43 @@ with tab0:
         )
         st.plotly_chart(fig, width='stretch')
     with cb:
-        df_bm = bor_med.sort_values('Giá trung vị')
+        df_bm = bor_med.sort_values('Giá trung bình')
         colors_bm = [BOROUGH_COLORS.get(b, '#6366f1') for b in df_bm['Borough']]
         fig = go.Figure(go.Bar(
-            x=df_bm['Giá trung vị'],
+            x=df_bm['Giá trung bình'],
             y=df_bm['Borough'],
             orientation='h',
             marker=dict(color=colors_bm),
-            text=df_bm['Giá trung vị'].apply(fmt_M),
+            text=df_bm['Giá trung bình'].apply(fmt_M),
             textposition='auto',
-            hovertemplate='<b>%{y}</b><br>Giá trung vị: $%{x:,.0f}<extra></extra>'
+            hovertemplate='<b>%{y}</b><br>Giá trung bình: $%{x:,.0f}<extra></extra>'
         ))
         clayout(fig, h=280, t=40, r=100)
         fig.update_layout(
-            title="Giá trung vị theo quận ($)",
+            title="Giá trung bình theo quận ($)",
             yaxis=dict(automargin=True, title='Quận'),
-            xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
+            xaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung bình ($)'),
             title_font=dict(size=13, color='#374151')
         )
         st.plotly_chart(fig, width='stretch')
 
-
-
     divider()
 
     section_q("Thị trường đang tập trung vào loại hình bất động sản nào?",
-
               "Cơ cấu loại hình và phân bố giá theo từng loại (top 6).")
 
-
-
     top6_bt = df['building_type'].value_counts().head(6).index.tolist()
-
     cc, cd  = st.columns(2)
-
     with cc:
-
         bt_c = df['building_type'].value_counts().head(6).reset_index()
-
         bt_c.columns = ['Loại hình','Số lượng']
-
         fig = px.pie(bt_c, names='Loại hình', values='Số lượng', hole=0.50,
-
                      color_discrete_sequence=[C_BLUE,C_SKY,C_ORANGE,C_GREEN,'#8b5cf6',C_GRAY],
-
                      title="Cơ cấu loại hình bất động sản")
-
         fig.update_traces(textposition='inside', textinfo='percent',
-
                           insidetextorientation='radial',
-
                           hovertemplate='<b>%{label}</b><br>%{value:,} GD<br>%{percent}<extra></extra>')
-
         clayout(fig, h=320, t=40, l=10, r=20, b=20, leg=True)
-
         fig.update_layout(legend=dict(orientation='v', x=1.0, y=0.5, font_size=11),
 
                           title_font=dict(size=13, color='#374151'))
@@ -1467,11 +1450,11 @@ with tab0:
 
     divider()
 
-    top_b0 = bor_med.sort_values('Giá trung vị', ascending=False).iloc[0]
+    top_b0 = bor_med.sort_values('Giá trung bình', ascending=False).iloc[0]
 
-    low_b0 = bor_med.sort_values('Giá trung vị').iloc[0]
+    low_b0 = bor_med.sort_values('Giá trung bình').iloc[0]
 
-    rat0   = top_b0['Giá trung vị'] / low_b0['Giá trung vị']
+    rat0   = top_b0['Giá trung bình'] / low_b0['Giá trung bình']
 
     top_bt0= df['building_type'].value_counts().index[0]
 
@@ -1507,7 +1490,7 @@ with tab0:
 
                               'Số GD': seg_cnt.values,
 
-                              'Giá trung vị': seg_med.values})
+                              'Giá trung bình': seg_med.values})
 
     seg_df['% thị trường'] = seg_df['Số GD'] / seg_df['Số GD'].sum() * 100
 
@@ -1516,42 +1499,29 @@ with tab0:
     sa, sb = st.columns(2)
 
     with sa:
-
-        fig_seg = px.bar(seg_df, x='Phân khúc', y='Số GD',
-
+        fig_seg = px.pie(seg_df, names='Phân khúc', values='Số GD', hole=0.50,
                          color='Phân khúc',
-
                          color_discrete_sequence=[C_GREEN, C_BLUE, C_ORANGE],
-
-                         text=seg_df['% thị trường'].apply(lambda v: f'{v:.1f}%'),
-
                          title="Cơ cấu phân khúc khách hàng")
-
-        fig_seg.update_traces(textposition='outside')
-
-        clayout(fig_seg, h=300, t=40, b=20)
-
-        fig_seg.update_layout(showlegend=False,
-
-                               xaxis=dict(automargin=True, title='Phân khúc'),
-
-                               yaxis=dict(automargin=True, title='Số giao dịch'),
-
-                               title_font=dict(size=13, color='#374151'))
-
+        fig_seg.update_traces(textposition='inside', textinfo='percent',
+                              insidetextorientation='radial',
+                              hovertemplate='<b>%{label}</b><br>%{value:,} GD<br>%{percent}<extra></extra>')
+        clayout(fig_seg, h=300, t=40, b=20, leg=True)
+        fig_seg.update_layout(legend=dict(orientation='h', yanchor='bottom', y=-0.25, xanchor='center', x=0.5, font_size=11),
+                              title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig_seg, width='stretch')
 
     with sb:
 
-        fig_sp = px.bar(seg_df, x='Phân khúc', y='Giá trung vị',
+        fig_sp = px.bar(seg_df, x='Phân khúc', y='Giá trung bình',
 
                         color='Phân khúc',
 
                         color_discrete_sequence=[C_GREEN, C_BLUE, C_ORANGE],
 
-                        text=seg_df['Giá trung vị'].apply(fmt_M),
+                        text=seg_df['Giá trung bình'].apply(fmt_M),
 
-                        title="Giá trung vị theo phân khúc")
+                        title="Giá trung bình theo phân khúc")
 
         fig_sp.update_traces(textposition='outside')
 
@@ -1561,7 +1531,7 @@ with tab0:
 
                                xaxis=dict(automargin=True, title='Phân khúc'),
 
-                               yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
+                               yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung bình ($)'),
 
                                title_font=dict(size=13, color='#374151'))
 
@@ -1609,9 +1579,9 @@ with tab0:
 
     risk_display = borough_risk[['borough_name','med_price','CV (%)','n_gd','Rủi ro biến động']].copy()
 
-    risk_display.columns = ['Quận','Giá trung vị','Biến động CV (%)','Số giao dịch','Đánh giá rủi ro']
+    risk_display.columns = ['Quận','Giá trung bình','Biến động CV (%)','Số giao dịch','Đánh giá rủi ro']
 
-    risk_display['Giá trung vị'] = risk_display['Giá trung vị'].apply(fmt_M)
+    risk_display['Giá trung bình'] = risk_display['Giá trung bình'].apply(fmt_M)
 
     risk_display['Số giao dịch'] = risk_display['Số giao dịch'].apply(lambda v: f'{v:,}')
 
@@ -1665,7 +1635,7 @@ with tab1:
 
     kc.metric("Khu vực sôi động nhất",       top_neigh.title()[:20])
 
-    kd.metric("Quận giá trung vị cao nhất",  top_bor_p)
+    kd.metric("Quận giá trung bình cao nhất",  top_bor_p)
 
     st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
@@ -1677,7 +1647,7 @@ with tab1:
 
         "Bản đồ Nhiệt Khu vực (NYC Hotspot Heatmap)",
 
-        "Tô màu khu vực thể hiện trực quan điểm nóng (hotspots) về Giá trung vị, Giá/sqft hoặc Mật độ thanh khoản giao dịch."
+        "Tô màu khu vực thể hiện trực quan điểm nóng (hotspots) về Giá trung bình, Giá/sqft hoặc Mật độ thanh khoản giao dịch."
 
     )
 
@@ -1713,7 +1683,7 @@ with tab1:
     with mc1:
         map_metric = st.radio(
             "Hiển thị điểm nóng theo:",
-            options=["🔥 Giá trung vị ($)", "📐 Giá/sqft trung vị ($)", "📊 Mật độ giao dịch (Số căn)"],
+            options=["🔥 Giá trung bình ($)", "📐 Giá/sqft trung bình ($)", "📊 Mật độ giao dịch (Số căn)"],
             horizontal=True
         )
     with mc2:
@@ -1735,10 +1705,10 @@ with tab1:
     }
     selected_style = style_map.get(map_style_choice, "carto-positron")
 
-    if "Giá trung vị" in map_metric:
+    if "Giá trung bình" in map_metric:
         target_z = 'med_price'
         color_scale = "Plasma"
-        z_title = "Giá trung vị ($)"
+        z_title = "Giá trung bình ($)"
     elif "Giá/sqft" in map_metric:
         target_z = 'med_ppsf_clean'
         color_scale = "Inferno"
@@ -1774,7 +1744,7 @@ with tab1:
             },
             labels={
                 "borough_name": "Quận",
-                "med_price": "Giá trung vị",
+                "med_price": "Giá trung bình",
                 "med_ppsf_clean": "Giá/sqft",
                 "n_count": "Số GD"
             }
@@ -1801,7 +1771,7 @@ with tab1:
             },
             labels={
                 "borough_name": "Quận",
-                "med_price": "Giá trung vị",
+                "med_price": "Giá trung bình",
                 "med_ppsf_clean": "Giá/sqft",
                 "n_count": "Số GD"
             }
@@ -1839,7 +1809,7 @@ with tab1:
 
     section_q("Giá bán phân bố như thế nào trong từng quận?",
 
-              "Đường giữa = trung vị. Hộp = khoảng tứ phân vị (25%–75%). Nhãn giá trung vị được ghi trực tiếp.")
+              "Đường giữa = trung bình. Hộp = khoảng tứ phân vị (25%–75%). Nhãn giá trung bình được ghi trực tiếp.")
 
 
 
@@ -1885,7 +1855,7 @@ with tab1:
 
     section_q("Khu vực nào sôi động nhất và có giá/sqft cao nhất?",
 
-              "Trái: số giao dịch (thanh khoản). Phải: giá/sqft trung vị (loại khu vực < 5 giao dịch để tránh sai lệch mẫu nhỏ).")
+              "Trái: số giao dịch (thanh khoản). Phải: giá/sqft trung bình (loại khu vực < 5 giao dịch để tránh sai lệch mẫu nhỏ).")
 
     st.markdown("""
     <div style='display:flex;gap:8px;align-items:center;margin-top:-6px;margin-bottom:14px;flex-wrap:wrap;'>
@@ -1966,11 +1936,11 @@ with tab1:
                             text=sub['med_ppsf'].apply(lambda v: f'${v:,.0f}'),
                             textposition='auto',
                             customdata=sub['borough_name'],
-                            hovertemplate='<b>%{y}</b><br>Quận: <b>%{customdata}</b><br>Giá/sqft trung vị: <b>$%{x:,.0f}</b><extra></extra>'
+                            hovertemplate='<b>%{y}</b><br>Quận: <b>%{customdata}</b><br>Giá/sqft trung bình: <b>$%{x:,.0f}</b><extra></extra>'
                         ))
                 clayout(fig, h=480, t=40, b=20, r=80)
                 fig.update_layout(
-                    title="Top 15 khu vực giá/sqft cao nhất (trung vị)",
+                    title="Top 15 khu vực giá/sqft cao nhất (trung bình)",
                     barmode='stack',
                     yaxis=dict(
                         automargin=True, 
@@ -1979,7 +1949,7 @@ with tab1:
                         categoryorder='array',
                         categoryarray=t15p['Khu vực'].tolist()
                     ),
-                    xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung vị)'),
+                    xaxis=dict(tickformat='$,.0f', automargin=True, title='$/sqft (trung bình)'),
                     title_font=dict(size=13, color='#374151'),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10))
                 )
@@ -2133,19 +2103,19 @@ with tab2:
 
                                   color='med_price', color_continuous_scale='Blues', trendline='ols',
 
-                                  labels={'sqft_mid':'Diện tích trung vị (sqft)',
+                                  labels={'sqft_mid':'Diện tích trung bình (sqft)',
 
-                                          'med_price':'Giá trung vị ($)','cnt':'Số GD'},
+                                          'med_price':'Giá trung bình ($)','cnt':'Số GD'},
 
-                                  title="Tương quan giữa Diện tích sử dụng (sqft) và Giá bán trung vị ($)")
+                                  title="Tương quan giữa Diện tích sử dụng (sqft) và Giá bán trung bình ($)")
 
         clayout(fig_sq_chart, h=340, t=40, b=20)
 
         fig_sq_chart.update_layout(coloraxis_showscale=False,
 
-                                   yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung vị ($)'),
+                                   yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá trung bình ($)'),
 
-                                   xaxis=dict(automargin=True, title='Diện tích trung vị (sqft)'),
+                                   xaxis=dict(automargin=True, title='Diện tích trung bình (sqft)'),
 
                                    title_font=dict(size=13, color='#374151'))
 
@@ -2201,9 +2171,9 @@ with tab2:
 
         text=inc_summary['avg_inc'].apply(lambda v: f'Thu nhập TB: ${v:,.0f}'),
 
-        title="Mặt bằng Giá nhà Trung vị xếp theo Mức Thu nhập Bình quân Khu vực ($)",
+        title="Mặt bằng Giá nhà Trung bình xếp theo Mức Thu nhập Bình quân Khu vực ($)",
 
-        labels={'borough_name': 'Quận', 'med_price': 'Giá bán trung vị ($)', 'avg_inc': 'Thu nhập TB ($)'}
+        labels={'borough_name': 'Quận', 'med_price': 'Giá bán trung bình ($)', 'avg_inc': 'Thu nhập TB ($)'}
 
     )
 
@@ -2213,7 +2183,7 @@ with tab2:
 
     fig_inc.update_layout(
 
-        yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá bán trung vị ($)'),
+        yaxis=dict(tickformat='$,.0f', automargin=True, title='Giá bán trung bình ($)'),
 
         xaxis=dict(automargin=True, title='Quận'),
 
@@ -2269,9 +2239,9 @@ with tab2:
 
         text=age_sum['sale_price'].apply(fmt_M),
 
-        title="Giá trung vị bất động sản phân theo Nhóm Tuổi công trình",
+        title="Giá trung bình bất động sản phân theo Nhóm Tuổi công trình",
 
-        labels={'age_group': 'Nhóm tuổi', 'sale_price': 'Giá trung vị ($)'}
+        labels={'age_group': 'Nhóm tuổi', 'sale_price': 'Giá trung bình ($)'}
 
     )
 
@@ -2375,7 +2345,7 @@ with tab3:
 
         st.markdown("<h4 style='color:#1e293b; margin-top:0px;'>Toàn cảnh thị trường</h4>", unsafe_allow_html=True)
 
-        st.markdown("<p style='color:#64748b; font-size:14px;'>Đường xu hướng (nét đứt) cho thấy quỹ đạo lợi suất của giá trung vị toàn khu vực đang chọn.</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color:#64748b; font-size:14px;'>Đường xu hướng (nét đứt) cho thấy quỹ đạo lợi suất của giá trung bình toàn khu vực đang chọn.</p>", unsafe_allow_html=True)
 
         mts_all = df_t3.groupby('ym_dt')['sale_price'].median().reset_index().sort_values('ym_dt')
 
