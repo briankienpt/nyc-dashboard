@@ -72,7 +72,7 @@ FALLBACK = {
 # ═══════════════════════════════════════════════════════════════════
 def fetch_census(borough_name: str, fips: str) -> dict:
     """
-    Lấy dân số (B01003_001E) và thu nhập trung vị hộ gia đình (B19013_001E)
+    Lấy dân số (B01003_001E) và thu nhập trung bình hộ gia đình (B19013_001E)
     từ Census ACS 5-Year 2023.
     API công khai, không cần key.
     """

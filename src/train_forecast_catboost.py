@@ -59,7 +59,7 @@ max_date = date_check.max().strftime('%m/%Y') if date_check.notna().any() else '
 print(f"📊 Số lượng bản ghi hợp lệ: {len(df):,} dòng x {df.shape[1]} cột")
 print(f"📅 Giai đoạn dữ liệu ghi nhận: từ {min_date} đến {max_date} (NYC 2025 - 2026)")
 print(f"💰 Khoảng giá: từ ${df[target].min():,.0f} đến ${df[target].max():,.0f}")
-print(f"📍 Giá trung vị (Median): ${df[target].median():,.0f}")
+print(f"📍 Giá trung bình (Median): ${df[target].median():,.0f}")
 
 # 3. Feature Engineering
 print("\n⚙️ 2. Trích xuất đặc trưng (Feature Engineering)...")

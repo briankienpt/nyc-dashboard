@@ -110,7 +110,7 @@ def generate_full_report(doc_path: str, info: dict, stats: pd.DataFrame, ml_metr
 
     add_heading_with_level(doc, '3.3 Quy trình làm sạch dữ liệu (Data Cleaning)', 2)
     doc.add_paragraph('Bước 1: Xử lý giá trị Zero và Missing. Rất nhiều giao dịch có giá bán = $0 (do chuyển nhượng nội bộ gia đình, sang tên thừa kế). Dự án đã dùng bộ lọc Pandas để loại bỏ toàn bộ các giao dịch sale_price <= 0 và các giao dịch có diện tích gross_sqft <= 0.')
-    doc.add_paragraph(f'Bước 2: Xử lý Khuyết thiếu. Tổng số NaN trước xử lý là {info["missing"]:,}. Các giá trị năm xây dựng (Year Built) bị thiếu được điền (Impute) bằng giá trị Trung vị (Median) của chính khu vực (Neighborhood) đó, nhằm đảm bảo đặc trưng lịch sử của khu vực được giữ nguyên.')
+    doc.add_paragraph(f'Bước 2: Xử lý Khuyết thiếu. Tổng số NaN trước xử lý là {info["missing"]:,}. Các giá trị năm xây dựng (Year Built) bị thiếu được điền (Impute) bằng giá trị Trung bình (Median) của chính khu vực (Neighborhood) đó, nhằm đảm bảo đặc trưng lịch sử của khu vực được giữ nguyên.')
     doc.add_paragraph('Bước 3: Loại bỏ Ngoại lai (Outlier Detection). Thị trường NYC có những căn hộ siêu sang giá hàng trăm triệu đô la. Nếu đưa vào mô hình, những dữ liệu này sẽ làm sai lệch dự báo đối với đại đa số người dân. Dự án sử dụng phương pháp Tứ phân vị (IQR) để chặn trên và chặn dưới, loại bỏ các giao dịch quá bất thường.')
 
     # ── CHƯƠNG 4: Xử lý dữ liệu (Machine Learning) ──

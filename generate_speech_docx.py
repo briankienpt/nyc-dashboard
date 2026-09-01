@@ -111,7 +111,7 @@ def create_presentation_doc(output_path):
     )
     add_speech_paragraph(
         "Nhìn lên các thẻ chỉ số KPI tổng hợp phía trên, tập dữ liệu ghi nhận hơn 47.000 giao dịch với tổng giá trị thị trường đạt hơn 47,1 tỷ USD. "
-        "Mức giá trung vị toàn thành phố nằm ở mốc 865.000 USD, trong đó có tới gần 38,5% số giao dịch đạt giá trị từ 1 triệu USD trở lên — cho thấy New York là một thị trường có sức hút và tỷ trọng giá trị cao rất rõ rệt."
+        "Mức giá trung bình toàn thành phố nằm ở mốc 865.000 USD, trong đó có tới gần 38,5% số giao dịch đạt giá trị từ 1 triệu USD trở lên — cho thấy New York là một thị trường có sức hút và tỷ trọng giá trị cao rất rõ rệt."
     )
 
     # 2. BIỂU ĐỒ 1
@@ -124,10 +124,10 @@ def create_presentation_doc(output_path):
     )
 
     # 3. BIỂU ĐỒ 2
-    add_section_header("BIỂU ĐỒ 2: GIÁ TRUNG VỊ THEO QUẬN (MẶT BẰNG ĐỊNH GIÁ)", "📊")
+    add_section_header("BIỂU ĐỒ 2: GIÁ TRUNG BÌNH THEO QUẬN (MẶT BẰNG ĐỊNH GIÁ)", "📊")
     add_callout("Lời thoại thuyết trình (Biểu đồ 2)",
-        "Tại biểu đồ thứ hai về Giá trung vị theo quận, em sử dụng chỉ số trung vị (Median) thay vì giá trung bình nhằm loại trừ hoàn toàn ảnh hưởng của các bất động sản siêu đắt đỏ. "
-        "Kết quả hiển thị một bức tranh rất rõ nét: Manhattan và Brooklyn hoàn toàn áp đảo với mức giá trung vị vượt mốc 1 triệu USD (cụ thể Manhattan là 1,055 triệu USD và Brooklyn là 1,05 triệu USD). Con số này cao hơn gấp 1,4 đến 1,5 lần so với Queens (745.000 USD), Staten Island (720.000 USD) và Bronx (700.000 USD). "
+        "Tại biểu đồ thứ hai về Giá trung bình theo quận, em sử dụng chỉ số trung bình (Median) thay vì giá trung bình nhằm loại trừ hoàn toàn ảnh hưởng của các bất động sản siêu đắt đỏ. "
+        "Kết quả hiển thị một bức tranh rất rõ nét: Manhattan và Brooklyn hoàn toàn áp đảo với mức giá trung bình vượt mốc 1 triệu USD (cụ thể Manhattan là 1,055 triệu USD và Brooklyn là 1,05 triệu USD). Con số này cao hơn gấp 1,4 đến 1,5 lần so với Queens (745.000 USD), Staten Island (720.000 USD) và Bronx (700.000 USD). "
         "Điều này chứng minh thị trường có sự phân tầng giá trị rất sâu sắc: Manhattan và Brooklyn đại diện cho phân khúc bất động sản cao cấp, giá trị lớn; trong khi Queens và Bronx lại đóng vai trò là thị trường nhà ở với mức giá dễ tiếp cận hơn cho đa số người dân. "
         "Để giải mã lý do tại sao có sự chênh lệch lớn này, biểu đồ tiếp theo sẽ bóc tách cơ cấu các loại hình bất động sản được giao dịch trên thị trường."
     )
@@ -144,8 +144,8 @@ def create_presentation_doc(output_path):
     # 5. BIỂU ĐỒ 4
     add_section_header("BIỂU ĐỒ 4: PHÂN BỐ GIÁ THEO LOẠI HÌNH BẤT ĐỘNG SẢN (BOX PLOT TOP 6)", "📊")
     add_callout("Lời thoại thuyết trình (Biểu đồ 4)",
-        "Biểu đồ phân bố giá Boxplot cho phép chúng ta quan sát cả mức giá trung vị lẫn biên độ dao động của top 6 loại hình bất động sản. "
-        "Điểm đáng chú ý là nhóm Nhà ở phức hợp 2-10 căn (2-10 Unit Residential) có mức giá trung vị cao nhất, đạt khoảng 1,1 triệu USD, theo sau là Nhà ở gia đình (Family Dwellings) ở mức 900.000 USD. Trong khi đó, nhóm Căn hộ thang máy dù chiếm số lượng giao dịch lớn nhất nhưng mức giá trung vị rơi vào khoảng 760.000 USD với dải phân bố rất rộng. "
+        "Biểu đồ phân bố giá Boxplot cho phép chúng ta quan sát cả mức giá trung bình lẫn biên độ dao động của top 6 loại hình bất động sản. "
+        "Điểm đáng chú ý là nhóm Nhà ở phức hợp 2-10 căn (2-10 Unit Residential) có mức giá trung bình cao nhất, đạt khoảng 1,1 triệu USD, theo sau là Nhà ở gia đình (Family Dwellings) ở mức 900.000 USD. Trong khi đó, nhóm Căn hộ thang máy dù chiếm số lượng giao dịch lớn nhất nhưng mức giá trung bình rơi vào khoảng 760.000 USD với dải phân bố rất rộng. "
         "Ý nghĩa thực tiễn ở đây là các bất động sản tạo ra dòng tiền hoặc có diện tích sử dụng lớn luôn đòi hỏi vốn đầu tư ban đầu cao hơn, trong khi căn hộ chung cư cung cấp nhiều lựa chọn đa dạng từ phân khúc tầm trung đến cao cấp. "
         "Tiếp theo, để hiểu rõ hơn về đối tượng tham gia thị trường, chúng ta hãy xem xét cơ cấu phân khúc khách hàng ở phần bên dưới."
     )
@@ -154,7 +154,7 @@ def create_presentation_doc(output_path):
     add_section_header("BIỂU ĐỒ 5 & 6: CƠ CẤU PHÂN KHÚC KHÁCH HÀNG & MẶT BẰNG GIÁ THEO PHÂN KHÚC", "📊")
     add_callout("Lời thoại thuyết trình (Biểu đồ 5 & 6)",
         "Ở cụm biểu đồ phân khúc khách hàng, dữ liệu được phân chia dựa trên quy mô số căn trong tòa nhà nhằm phân loại mục đích mua: Mua ở thực (1 căn), Đầu tư nhỏ lẻ (2 đến 10 căn) và Nhà đầu tư tổ chức (trên 10 căn). "
-        "Số liệu chỉ ra rằng nhóm Mua ở thực chiếm tỷ trọng áp đảo lên tới gần 95% tổng giao dịch toàn thị trường với mức giá trung vị khoảng 850.000 USD. Ngược lại, nhóm đầu tư từ 2 căn trở lên chỉ chiếm khoảng 5% nhưng mặt bằng giá trung vị lại tăng vọt lên từ 1,1 triệu đến hơn 2,5 triệu USD. "
+        "Số liệu chỉ ra rằng nhóm Mua ở thực chiếm tỷ trọng áp đảo lên tới gần 95% tổng giao dịch toàn thị trường với mức giá trung bình khoảng 850.000 USD. Ngược lại, nhóm đầu tư từ 2 căn trở lên chỉ chiếm khoảng 5% nhưng mặt bằng giá trung bình lại tăng vọt lên từ 1,1 triệu đến hơn 2,5 triệu USD. "
         "Điều này khẳng định thị trường bất động sản New York về căn bản vẫn được nâng đỡ vững chắc bởi nhu cầu an cư thực tế của người dân, trong khi dòng vốn đầu tư tổ chức tập trung vào các tài sản quy mô lớn với giá trị giao dịch cao."
     )
 

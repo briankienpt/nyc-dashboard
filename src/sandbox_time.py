@@ -67,7 +67,7 @@ box-shadow:0 8px 32px rgba(99,102,241,0.3)'>
 """, unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════
-# 1. TOÀN CẢNH NYC (GIÁ TRUNG VỊ + INDEX)
+# 1. TOÀN CẢNH NYC (GIÁ TRUNG BÌNH + INDEX)
 # ════════════════════════════════════════════════════════════════
 st.markdown("### 1️⃣ Toàn cảnh Thị trường New York")
 st.markdown("<div style='font-size:14px;color:#4B5563;margin-bottom:10px'>Đường xu hướng (nét đứt) cho thấy sự ổn định đi ngang của toàn thị trường.</div>", unsafe_allow_html=True)

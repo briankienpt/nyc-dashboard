@@ -186,7 +186,7 @@ NYC_Dashboard/
 | [`Run_Dashboard.bat`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/Run_Dashboard.bat) | **CURRENT** | Production Launcher | Script khởi chạy 1-click cho người dùng cuối | In: OS Environment<br>Out: App running at Port 3000 | Tự động tạo virtual environment, cài `requirements.txt` và chạy `streamlit run app.py` |
 | [`src/main.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/main.py) | **SUPPORTING** | Secondary Pipeline | Làm sạch dữ liệu, train Random Forest, sinh Word Docx | In: `DATA.csv`<br>Out: `BaoCao_Final.docx`, `ml_predictions.csv` | Chạy quy trình làm sạch, IQR clipping, train RF/Linear Regression, gọi `report_generator.py` |
 | [`src/report_generator.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/report_generator.py) | **SUPPORTING** | Reporting Engine | Sinh tài liệu báo cáo tốt nghiệp 9 chương tự động | In: Thống kê & ML metrics<br>Out: File Word `.docx` | Tự động căn lề, chèn bảng, heading, tạo mục lục chuẩn học thuật |
-| [`src/crawl_social_metrics.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/crawl_social_metrics.py) | **SUPPORTING** | Data Ingestion Script | Crawl API Census ACS 2023 & OpenStreetMap | In: API Endpoints<br>Out: `social_metrics.json` | Lấy dân số, thu nhập trung vị từ Census; đếm công viên, bệnh viện, siêu thị từ OSM Bounding Box |
+| [`src/crawl_social_metrics.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/crawl_social_metrics.py) | **SUPPORTING** | Data Ingestion Script | Crawl API Census ACS 2023 & OpenStreetMap | In: API Endpoints<br>Out: `social_metrics.json` | Lấy dân số, thu nhập trung bình từ Census; đếm công viên, bệnh viện, siêu thị từ OSM Bounding Box |
 | [`src/geocode_zip.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/geocode_zip.py) | **SUPPORTING** | Geocoding Utility | Lấy tọa độ kinh/vĩ độ cho từng Zipcode qua pgeocode | In: `dim_location`<br>Out: `dim_zipcode` table | Truy vấn `pgeocode.Nominatim('us')` nạp tọa độ bưu chính vào kho dữ liệu |
 | [`src/etl_to_postgres.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/etl_to_postgres.py) | **LEGACY** | Prototype ETL | Pipeline ETL nạp dữ liệu vào Cloud PostgreSQL | In: `DATA.csv`<br>Out: PostgreSQL Cloud DB | Phiên bản ETL cũ thử nghiệm nạp lên Supabase/Neon |
 | [`src/dashboard_postgres.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/dashboard_postgres.py) | **EXPERIMENTAL** | Prototype Dashboard | Dashboard kết nối Cloud PostgreSQL qua `DATABASE_URL` | In: PostgreSQL Connection<br>Out: Web UI | Bản thử nghiệm truy vấn trực tiếp CSDL đám mây |
@@ -206,7 +206,7 @@ NYC_Dashboard/
    * **Nội dung:** Thông tin địa chính chi tiết: Tọa độ trắc địa (Latitude, Longitude), Năm xây dựng thực tế (`year_built`), Phân loại thuế, Tỷ lệ diện tích xây dựng trên đất (`building_land_ratio`).
 3. **U.S. Census Bureau – American Community Survey (ACS 5-Year 2023):**
    * **Phương thức thu thập:** API Endpoint `https://api.census.gov/data/2023/acs/acs5` (qua `src/crawl_social_metrics.py`).
-   * **Thuộc tính:** `B01003_001E` (Dân số theo FIPS Quận), `B19013_001E` (Thu nhập trung vị hộ gia đình), `ALAND` (Diện tích đất m²).
+   * **Thuộc tính:** `B01003_001E` (Dân số theo FIPS Quận), `B19013_001E` (Thu nhập trung bình hộ gia đình), `ALAND` (Diện tích đất m²).
 4. **OpenStreetMap (OSM) via Overpass API:**
    * **Phương thức:** Truy vấn API Overpass theo Bounding Box địa lý của 5 quận NYC.
    * **Thuộc tính thu thập:** Số lượng công viên (`leisure=park`), Bệnh viện/phòng khám (`amenity=hospital`), Siêu thị (`shop=supermarket`), Ga tàu điện ngầm (`railway=station/subway`).
@@ -215,7 +215,7 @@ NYC_Dashboard/
    * **Vị trí:** `data/data clean/DATA.csv` (và bản sao tại `DATA.csv`).
    * **Kích thước:** 11.58 MB.
    * **Số bản ghi:** **47.039 dòng × 35 cột** (Năm 2025: 36.989 giao dịch; Năm 2026: 10.050 giao dịch).
-   * **Phạm vi giá:** Từ \$4.000 đến \$2.957.225 USD (Giá trung vị: \$865.000 USD).
+   * **Phạm vi giá:** Từ \$4.000 đến \$2.957.225 USD (Giá trung bình: \$865.000 USD).
 
 ---
 
@@ -254,7 +254,7 @@ Bảng tổng hợp từ điển dữ liệu của tệp sạch `DATA.csv` và K
 | **DATA.csv** | `sale_year` | `int64` | Năm giao dịch (2025, 2026) | No | Date / Dim | Trích xuất từ `sale_date_parsed.dt.year` |
 | **DATA.csv** | `sale_month` | `int16` | Tháng giao dịch (1..12) | No | Date / Dim | Trích xuất từ `sale_date_parsed.dt.month` |
 | **DATA.csv** | `pop_density` | `float64` | Mật độ dân số quận (người/km²)| No | Social Metric | Ghép từ U.S. Census ACS 2023 |
-| **DATA.csv** | `avg_income` | `float64` | Thu nhập trung vị hộ gia đình | No | Social Metric | Ghép từ U.S. Census ACS 2023 |
+| **DATA.csv** | `avg_income` | `float64` | Thu nhập trung bình hộ gia đình | No | Social Metric | Ghép từ U.S. Census ACS 2023 |
 | **DATA.csv** | `gdp_local` | `float64` | Tỷ trọng đóng góp GDP (%) | No | Economic Metric| Hằng số ước tính từ NYC Comptroller |
 | **DATA.csv** | `dist_center` | `float64` | Khoảng cách đến trung tâm (km)| No | Spatial Metric | Khoảng cách đến Financial District |
 | **DATA.csv** | `amenity_score` | `float64` | Điểm số tiện ích không gian | No | Spatial Score | Trọng số từ PostGIS POI (thang 1–10) |
@@ -281,7 +281,7 @@ Quy trình làm sạch dữ liệu thực tế được ghi nhận trong `data/d
 ### Bước 3: Điền giá trị khuyết thiếu (Missing Values Imputation)
 * **Problem:** `zip_code`, `residential_units`, `commercial_units`, `total_units`, `gross_sqft`, `land_sqft` có giá trị `NaN` hoặc `= 0`.
 * **Solution:**
-  * Cột số có phân phối lệch (skewed): Điền bằng **Median** (Trung vị) để tránh bị ảnh hưởng bởi ngoại lệ cực trị (`residential_units` fill median = 1; `commercial_units` fill median = 0; `total_units` fill median = 1; `zip_code` fill median = 11205.0).
+  * Cột số có phân phối lệch (skewed): Điền bằng **Median** (Trung bình) để tránh bị ảnh hưởng bởi ngoại lệ cực trị (`residential_units` fill median = 1; `commercial_units` fill median = 0; `total_units` fill median = 1; `zip_code` fill median = 11205.0).
   * Cột văn bản: Điền `'UNKNOWN'` hoặc `mode()[0]` (`address` khuyết điền 'UNKNOWN').
   * Cột target `sale_price`: **Không điền khuyết**, bắt buộc loại bỏ nếu `sale_price` null hoặc <= 10.000 USD (giao dịch danh nghĩa).
 * **Source file:** [`src/main.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/src/main.py#L129-L135), [`app.py`](file:///c:/Users/phong/OneDrive/Desktop/NYC_Dashboard/app.py#L424-L434).
@@ -513,10 +513,10 @@ Toàn bộ hệ thống giao diện được điều phối trong `app.py` với
 ---
 
 ### Tab 0: 🏙️ Tổng quan Thị trường (Market Overview)
-* **Mục đích:** Cung cấp cái nhìn toàn cảnh về quy mô vốn hóa, mặt bằng giá trung vị, phân bổ phân khúc sản phẩm và mức độ rủi ro giá của 5 quận NYC.
+* **Mục đích:** Cung cấp cái nhìn toàn cảnh về quy mô vốn hóa, mặt bằng giá trung bình, phân bổ phân khúc sản phẩm và mức độ rủi ro giá của 5 quận NYC.
 * **Thẻ chỉ số KPI (KPI Cards):**
-  1. *Giá trung vị (Median Price):* `$865K` (định dạng `$M` hoặc `$K`).
-  2. *Giá/sqft trung vị (Median Price/Sqft):* `~$600 - $800/sqft`.
+  1. *Giá trung bình (Median Price):* `$865K` (định dạng `$M` hoặc `$K`).
+  2. *Giá/sqft trung bình (Median Price/Sqft):* `~$600 - $800/sqft`.
   3. *Tổng giá trị giao dịch (Total Market Volume):* `~$47.1B` (Billion USD).
   4. *Tỷ lệ BĐS cao cấp (Pct >= $1M):* `~42.5%`.
 * **Biểu đồ & Thành phần Trực quan:**
@@ -524,7 +524,7 @@ Toàn bộ hệ thống giao diện được điều phối trong `app.py` với
 | Tên biểu đồ / Visual | Loại biểu đồ (Type) | Chiều phân tích (Dimension) | Thước đo (Measure) | Mục đích kinh doanh |
 | :--- | :--- | :--- | :--- | :--- |
 | **Top 5 Quận theo Doanh số** | Bar Chart (Horizontal) | `borough_name` | `SUM(sale_price)` | Xác định quận dẫn đầu về thu hút dòng vốn |
-| **Top 5 Quận theo Giá trung vị** | Bar Chart (Horizontal) | `borough_name` | `MEDIAN(sale_price)` | Đánh giá mức độ đắt đỏ tương đối giữa các quận |
+| **Top 5 Quận theo Giá trung bình** | Bar Chart (Horizontal) | `borough_name` | `MEDIAN(sale_price)` | Đánh giá mức độ đắt đỏ tương đối giữa các quận |
 | **Cơ cấu Loại hình Công trình** | Donut / Pie Chart | `building_type` (Top 5) | `COUNT(sale_id)` | Nhận diện loại hình chiếm lĩnh thanh khoản (One Family, Coops, Condos) |
 | **Phân phối Giá theo Loại hình** | Boxplot | `building_type` | `sale_price` | So sánh độ phân tán giá giữa nhà riêng lẻ vs căn hộ |
 | **Phân khúc Nhà đầu tư** | Grouped Bar Chart | `_segment` (1 căn, 2-10 căn, >10 căn) | `COUNT(sale_id)` & `MEDIAN(sale_price)` | Phân tích thị phần mua ở thực vs đầu tư tổ chức |
@@ -538,11 +538,11 @@ Toàn bộ hệ thống giao diện được điều phối trong `app.py` với
 * **Bản đồ không gian tương tác (NYC Density Heatmap):**
   * *Công nghệ:* OpenStreetMap Mapbox (`px.density_mapbox` / `px.density_map`).
   * *Tùy chọn hiển thị (Radio):*
-    1. Giá trung vị (\$) (Color scale: *Plasma*).
-    2. Giá/sqft trung vị (\$) (Color scale: *Inferno*).
+    1. Giá trung bình (\$) (Color scale: *Plasma*).
+    2. Giá/sqft trung bình (\$) (Color scale: *Inferno*).
     3. Mật độ giao dịch (Số căn) (Color scale: *Viridis*).
   * *Tùy biến:* Slider chỉnh bán kính điểm nhiệt (*Radius 15–45*) và độ phóng to (*Zoom 9–13*).
-* **Phân phối Giá theo Quận (Borough Boxplot):** Boxplot 5 quận có nhãn giá trung vị tự động hiển thị trên từng hộp.
+* **Phân phối Giá theo Quận (Borough Boxplot):** Boxplot 5 quận có nhãn giá trung bình tự động hiển thị trên từng hộp.
 * **Top Khu phố Thanh khoản & Đơn giá cao:** Hai biểu đồ Bar xếp hạng 10 khu phố sôi động nhất và 10 khu phố có $/sqft đắt đỏ nhất.
 
 ---
@@ -553,7 +553,7 @@ Toàn bộ hệ thống giao diện được điều phối trong `app.py` với
 * **Ma trận Tương quan Tổng thể (Correlation Heatmap):** Bản đồ nhiệt màu `RdBu_r` đo hệ số tương quan Pearson $r$ giữa `sale_price`, `gross_sqft`, `avg_income`, `dist_center`, `pop_density`, `building_age`.
 * **Phân tích Chuyên sâu 3 Biến số Cốt lõi:**
   1. *Diện tích công trình (`gross_sqft`):* Scatter plot kết hợp đường hồi quy tuyến tính `OLS trendline` chứng minh tương quan thuận rất mạnh ($r > 0.65$).
-  2. *Thu nhập bình quân khu vực (`avg_income`):* Bar chart so sánh giá nhà trung vị xếp theo mức thu nhập bình quân của 5 quận.
+  2. *Thu nhập bình quân khu vực (`avg_income`):* Bar chart so sánh giá nhà trung bình xếp theo mức thu nhập bình quân của 5 quận.
   3. *Tuổi thọ công trình (`building_age`):* Bar chart phân nhóm tuổi nhà (0-10 năm, 10-30 năm, 30-70 năm, >70 năm) giải thích yếu tố BĐS di sản (Heritage properties tại Manhattan).
 
 ---
@@ -576,7 +576,7 @@ Toàn bộ hệ thống giao diện được điều phối trong `app.py` với
   * *Đầu ra:*
     * Giá định giá hiện tại (\$) và Đơn giá ước tính (\$/sqft).
     * Giá dự báo sau $N$ tháng tương lai kèm biên độ tăng trưởng (\% Growth).
-    * Giá trung vị tham chiếu của khu phố đã chọn.
+    * Giá trung bình tham chiếu của khu phố đã chọn.
 
 ---
 
@@ -617,7 +617,7 @@ Dự án trả lời 8 câu hỏi cốt lõi của thị trường BĐS New York
 1. **Quy mô và thanh khoản của thị trường BĐS NYC giai đoạn 2025–2026 phân bổ ra sao?**  
    $\to$ Thị trường ghi nhận hơn 47.000 giao dịch với tổng giá trị hơn 47 tỷ USD; Brooklyn và Queens dẫn đầu về số lượng giao dịch, trong khi Manhattan chiếm lĩnh về quy mô vốn hóa.
 2. **Khu vực nào có giá BĐS đắt đỏ nhất và khu vực nào vừa túi tiền nhất?**  
-   $\to$ Manhattan có giá trung vị cao nhất (~$1.15M - $1.2M), tiếp theo là Brooklyn (~$850K - $900K); Bronx là khu vực có mức giá dễ tiếp cận nhất (~$550K - $600K).
+   $\to$ Manhattan có giá trung bình cao nhất (~$1.15M - $1.2M), tiếp theo là Brooklyn (~$850K - $900K); Bronx là khu vực có mức giá dễ tiếp cận nhất (~$550K - $600K).
 3. **Loại hình bất động sản nào chiếm lĩnh thị phần giao dịch?**  
    $\to$ Nhà ở 1-2 gia đình (One & Two Family Dwellings) và Căn hộ Co-ops/Condos chiếm hơn 70% tổng lượng giao dịch.
 4. **Phân khúc người mua ở thực và nhà đầu tư tổ chức phân chia như thế nào?**  
@@ -659,7 +659,7 @@ Khuyến nghị Đầu tư & Định giá AVM Tức thì
 
 | Tên Metric | Công thức toán học / Logic | Ý nghĩa nghiệp vụ | Nơi sử dụng trong dự án |
 | :--- | :--- | :--- | :--- |
-| **Median Price** | $\text{Median}(P) = P_{[(n+1)/2]}$ | Giá trung vị đại diện cho mức giá chuẩn, không bị méo bởi BĐS siêu đắt | Tab 0, Tab 1, Tab 4, `get_stats.py` |
+| **Median Price** | $\text{Median}(P) = P_{[(n+1)/2]}$ | Giá trung bình đại diện cho mức giá chuẩn, không bị méo bởi BĐS siêu đắt | Tab 0, Tab 1, Tab 4, `get_stats.py` |
 | **Price per Sqft** | $\text{PPSF} = \frac{\text{Sale Price}}{\text{Gross Sqft}}$ | Đơn vị giá trên mỗi foot vuông, chuẩn hóa quy mô diện tích | Tab 0, Tab 1, Tab 2, `DATA.csv` |
 | **Building Age** | $\text{Age} = \text{Sale Year} - \text{Year Built}$ | Đo lường độ cũ của công trình tại thời điểm giao dịch | `DATA.csv`, `main.py`, Tab 2 |
 | **Coefficient of Variation (CV%)** | $\text{CV} = \left(\frac{\sigma}{\mu_{med}}\right) \times 100\%$ | Đo lường mức độ biến động và rủi ro phân hóa giá của từng quận | Tab 0 (Risk Matrix), `get_stats.py` |
@@ -674,7 +674,7 @@ Khuyến nghị Đầu tư & Định giá AVM Tức thì
 
 * **Vấn đề đã xử lý triệt để (Resolved Issues):**
   1. *Duplicate records:* Đã kiểm tra và loại bỏ 100% dòng trùng lặp.
-  2. *Missing values trong các biến số chủ chốt:* Đã điền trung vị cho các cột số lệch, điền chuỗi cho biến định danh, loại bỏ hoàn toàn các cột > 50% null (`easement`, `apartment_number`).
+  2. *Missing values trong các biến số chủ chốt:* Đã điền trung bình cho các cột số lệch, điền chuỗi cho biến định danh, loại bỏ hoàn toàn các cột > 50% null (`easement`, `apartment_number`).
   3. *Giao dịch rác / tặng cho danh nghĩa:* Đã loại bỏ các giao dịch `< $10,000` USD khi nạp vào Fact Table.
   4. *Chuẩn hóa Schema & Foreign Keys:* Kiểm toán `verify_sqlite.py` xác nhận 0 orphan records giữa bảng Fact và các bảng Dimension.
 * **Vấn đề đã xác nhận còn tồn tại theo đặc thù dữ liệu (Confirmed Domain Limitations):**
@@ -690,7 +690,7 @@ Khuyến nghị Đầu tư & Định giá AVM Tức thì
 2. **Geocoding cấp độ Zipcode & Neighborhood:**  
    * Bản đồ nhiệt Heatmap gom nhóm và hiển thị tọa độ theo **Khu phố (Neighborhood) và Mã bưu chính (Zipcode)** dựa trên tọa độ OpenStreetMap / pgeocode, không gắn pin từng số nhà riêng lẻ.
 3. **Cơ chế Fallback định giá AVM:**  
-   * Nếu file trọng số mô hình `output/catboost_model.cbm` không tồn tại, hàm AVM trong `app.py` tự động chuyển sang cơ chế fallback dựa trên đơn giá trung vị khu phố ($\text{PPSF} \times \text{Gross Sqft}$) để đảm bảo không gây gián đoạn giao diện.
+   * Nếu file trọng số mô hình `output/catboost_model.cbm` không tồn tại, hàm AVM trong `app.py` tự động chuyển sang cơ chế fallback dựa trên đơn giá trung bình khu phố ($\text{PPSF} \times \text{Gross Sqft}$) để đảm bảo không gây gián đoạn giao diện.
 
 ---
 

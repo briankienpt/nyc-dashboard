@@ -172,9 +172,9 @@ def clean_data(df: pd.DataFrame):
         df['building_age'] = df['building_age'].clip(0, 200)
 
     # ── Tính chỉ số biến động giá YoY theo borough ────────────────────────────
-    # YoY (Year-over-Year) = % thay đổi giá trung vị giữa 2 năm liên tiếp theo từng quận.
-    # Công thức: YoY_borough = (Giá_trung_vị_năm_N / Giá_trung_vị_năm_(N-1) − 1) × 100%
-    # Dùng trung vị thay trung bình để giảm ảnh hưởng của giao dịch ngoại lệ.
+    # YoY (Year-over-Year) = % thay đổi giá trung bình giữa 2 năm liên tiếp theo từng quận.
+    # Công thức: YoY_borough = (Giá_trung_bình_năm_N / Giá_trung_bình_năm_(N-1) − 1) × 100%
+    # Dùng trung bình thay trung bình để giảm ảnh hưởng của giao dịch ngoại lệ.
     yoy_data = df.groupby(['borough_name', 'sale_year'])['sale_price'].median().unstack()
     if yoy_data.shape[1] >= 2:
         years_sorted = sorted(yoy_data.columns)
