@@ -1356,6 +1356,59 @@ with tab2:
     fig_age.update_layout(coloraxis_showscale=False, yaxis=dict(tickformat='$,.0f', automargin=True), title_font=dict(size=13, color='#374151'))
     st.plotly_chart(fig_age, width='stretch')
 
+    divider()
+
+    # ── KẾT LUẬN & TỔNG KẾT CÁC YẾU TỐ QUYẾT ĐỊNH GIÁ ──
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+                border-radius: 14px; padding: 22px 26px; color: #ffffff; margin-top: 10px;
+                box-shadow: 0 8px 24px rgba(49, 46, 129, 0.28); border-left: 6px solid #818cf8;'>
+        <div style='display: flex; align-items: center; gap: 10px; margin-bottom: 12px;'>
+            <span style='font-size: 22px;'>📌</span>
+            <span style='font-size: 16px; font-weight: 800; letter-spacing: -0.2px;'>
+                KẾT LUẬN & TỔNG KẾT CÁC YẾU TỐ QUYẾT ĐỊNH GIÁ BĐS NEW YORK
+            </span>
+        </div>
+        <div style='font-size: 13px; line-height: 1.7; color: #e0e7ff; margin-bottom: 16px;'>
+            Qua quá trình phân tích ma trận tương quan kết hợp đối chiếu mô hình định giá đa biến, chúng ta rút ra các kết luận cốt lõi sau:
+        </div>
+        <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;'>
+            <div style='background: rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255, 255, 255, 0.12);'>
+                <div style='font-weight: 700; color: #a5b4fc; font-size: 13px; margin-bottom: 6px;'>
+                    🏢 1. Quy mô Diện tích (Gross Sqft)
+                </div>
+                <div style='font-size: 12.5px; color: #f1f5f9; line-height: 1.55;'>
+                    Có <b>hệ số tương quan thuận mạnh nhất (r ≈ +0.65)</b> về mặt số học đơn vị với tổng giá trị căn nhà. Tuy nhiên, diện tích chỉ đóng vai trò là <i>hệ số nhân quy mô</i> sau khi đơn giá đã được định hình bởi vị trí.
+                </div>
+            </div>
+            <div style='background: rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255, 255, 255, 0.12);'>
+                <div style='font-weight: 700; color: #a5b4fc; font-size: 13px; margin-bottom: 6px;'>
+                    📍 2. Vị trí & Phân khúc (Location & Class)
+                </div>
+                <div style='font-size: 12.5px; color: #f1f5f9; line-height: 1.55;'>
+                    Là <b>yếu tố quyết định nền giá cơ sở</b> ($/sqft). Sự khác biệt địa lý giữa các quận (Manhattan vs Bronx) và từng khu phố (Tribeca vs Jamaica) tạo ra khoảng cách giá trị lớn hơn nhiều so với chênh lệch diện tích thuần túy.
+                </div>
+            </div>
+            <div style='background: rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255, 255, 255, 0.12);'>
+                <div style='font-weight: 700; color: #a5b4fc; font-size: 13px; margin-bottom: 6px;'>
+                    💰 3. Thu nhập & Sức mua cư dân
+                </div>
+                <div style='font-size: 12.5px; color: #f1f5f9; line-height: 1.55;'>
+                    Tương quan đồng biến chặt chẽ với mặt bằng giá (r ≈ +0.45). Các khu vực có thu nhập bình quân cao sở hữu cộng đồng dân trí và dịch vụ cao cấp, giúp duy trì thanh khoản và hỗ trợ giá BĐS bền vững.
+                </div>
+            </div>
+            <div style='background: rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 14px 16px; border: 1px solid rgba(255, 255, 255, 0.12);'>
+                <div style='font-weight: 700; color: #a5b4fc; font-size: 13px; margin-bottom: 6px;'>
+                    ⏳ 4. Tuổi thọ công trình (Building Age)
+                </div>
+                <div style='font-size: 12.5px; color: #f1f5f9; line-height: 1.55;'>
+                    Mức độ tương quan âm khá yếu (r ≈ -0.05). Dù khấu hao vật lý làm giảm giá trị, các công trình cổ tại vị trí "đất vàng" trung tâm và có kiến trúc lịch sử vẫn duy trì mức giá rất cao, bù đắp ảnh hưởng tuổi đời.
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ════════════════════════════════════════════════════════════
 # CHUẨN BỊ DỮ LIỆU ĐỀ XUẤT (Tính toán chung cho cả Tab 6 & 7)
