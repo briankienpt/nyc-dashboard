@@ -1356,6 +1356,13 @@ with tab2:
     fig_age.update_layout(coloraxis_showscale=False, yaxis=dict(tickformat='$,.0f', automargin=True), title_font=dict(size=13, color='#374151'))
     st.plotly_chart(fig_age, width='stretch')
 
+    divider()
+    st.markdown("""
+    <div style='background: rgba(99, 102, 241, 0.08); border-left: 4px solid #6366f1; border-radius: 8px; padding: 14px 18px; margin-top: 12px; font-size: 13.5px; color: #1e1b4b; line-height: 1.6;'>
+        <b>📌 Kết luận:</b> Nói cách khác, dữ liệu không chỉ cho chúng ta biết giá bất động sản đang như thế nào, mà còn giúp khách hàng biết nên dựa vào những yếu tố nào trước khi đưa ra quyết định.
+    </div>
+    """, unsafe_allow_html=True)
+
 
 # ════════════════════════════════════════════════════════════
 # CHUẨN BỊ DỮ LIỆU ĐỀ XUẤT (Tính toán chung cho cả Tab 6 & 7)
