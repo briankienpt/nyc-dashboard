@@ -1076,7 +1076,7 @@ with tab1:
 
     divider()
     section_q("Giá bán phân bố như thế nào trong từng quận?",
-              "Đường giữa = trung bình. Hộp = khoảng tứ phân vị (25%–75%). Nhãn giá trung bình được ghi trực tiếp.")
+              "Đường giữa = trung vị (Median). Hộp = khoảng tứ phân vị (25%–75%). Nhãn giá trung vị được ghi trực tiếp.")
 
     bor_ord1 = df.groupby('borough_name')['sale_price'].median().sort_values(ascending=False).index.tolist()
     df_box_sample = df.sample(n=min(10000, len(df)), random_state=42)
