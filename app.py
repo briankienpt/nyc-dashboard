@@ -917,41 +917,7 @@ with tab0:
                                title_font=dict(size=13, color='#374151'))
         st.plotly_chart(fig_sp, width='stretch')
 
-    # ── Nhận diện rủi ro đầu tư ───────────────────────────────
-    divider()
-    section_q("Khu vực nào có rủi ro giá cao nhất?",
-              "Rủi ro = biến động giá cao (CV cao) hoặc thanh khoản thấp. "
-              "Xanh = ít rủi ro, đỏ = cần thận trọng.")
 
-    borough_risk = df.groupby('borough_name').agg(
-        med_price=('sale_price','median'),
-        std_price=('sale_price','std'),
-        n_gd=('sale_price','count')
-    ).reset_index()
-    borough_risk['CV (%)'] = (borough_risk['std_price'] / borough_risk['med_price'] * 100).round(1)
-    borough_risk['Rủi ro biến động'] = pd.cut(
-        borough_risk['CV (%)'],
-        bins=[0, 48, 53, float('inf')],
-        labels=['🟢 Thấp', '🟡 Trung bình', '🔴 Cao']
-    )
-    borough_risk = borough_risk.sort_values('CV (%)')
-
-    risk_display = borough_risk[['borough_name','med_price','CV (%)','n_gd','Rủi ro biến động']].copy()
-    risk_display.columns = ['Quận','Giá trung bình','Biến động CV (%)','Số giao dịch','Đánh giá rủi ro']
-    risk_display['Giá trung bình'] = risk_display['Giá trung bình'].apply(fmt_M)
-    risk_display['Số giao dịch'] = risk_display['Số giao dịch'].apply(lambda v: f'{v:,}')
-
-    def style_risk_level(val):
-        if 'Thấp' in str(val):
-            return 'background-color: rgba(16, 185, 129, 0.2); color: #047857; font-weight: bold;'
-        elif 'Trung bình' in str(val):
-            return 'background-color: rgba(245, 158, 11, 0.2); color: #b45309; font-weight: bold;'
-        elif 'Cao' in str(val):
-            return 'background-color: rgba(239, 68, 68, 0.2); color: #b91c1c; font-weight: bold;'
-        return ''
-
-    styled_risk = risk_display.set_index('Quận').style.map(style_risk_level, subset=['Đánh giá rủi ro'])
-    st.dataframe(styled_risk, width='stretch')
 
 # ════════════════════════════════════════════════════════════
 # TAB 1 — PHÂN TÍCH KHU VỰC & BẢN ĐỒ HEATMAP
