@@ -1201,6 +1201,18 @@ with tab1:
         else:
             st.info("Không đủ dữ liệu giá/sqft.")
 
+    divider()
+    st.markdown("""
+    <div style='background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10b981; border-radius: 8px; padding: 14px 18px; margin-top: 16px; font-size: 13.5px; color: #064e3b; line-height: 1.7;'>
+        <b style='font-size: 14px;'>📌 Kết luận:</b>
+        <ul style='margin: 6px 0 0 18px; padding: 0;'>
+            <li><b>Thị trường:</b> Nơi đắt nhất không phải nơi mua nhiều nhất (Queens mua bán tấp nập nhất).</li>
+            <li><b>Bên mua:</b> Vốn vừa/mua ở &rarr; chọn Queens; Giữ tiền lâu dài &rarr; chọn Manhattan/Tây Brooklyn.</li>
+            <li><b>Bên bán:</b> Đặt giá 700k-800k ở vùng ven để vừa túi tiền, dễ bán nhất.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
 # ════════════════════════════════════════════════════════════
 # TAB 2 — YẾU TỐ QUYẾT ĐỊNH GIÁ & PHÂN TÍCH TƯƠNG QUAN
 # ════════════════════════════════════════════════════════════
