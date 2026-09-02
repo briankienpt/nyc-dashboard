@@ -1596,139 +1596,84 @@ with tab4:
         st.dataframe(df_comp, width='stretch', hide_index=False)
 
         divider()
-        ci1, ci2 = st.columns(2)
-        with ci1:
-            section_q("Top các yếu tố tác động mạnh nhất đến giá BĐS","Được trích xuất từ Feature Importance của mô hình CatBoost")
-            if df_imp is not None:
-                imp4s = df_imp.head(15).copy()
-                imp_name_map = {
-                    'gross_sqft': 'Diện tích sàn (Gross Sqft)',
-                    'land_sqft': 'Diện tích đất (Land Sqft)',
-                    'building_land_ratio': 'Tỷ lệ diện tích xây/đất',
-                    'building_age': 'Tuổi thọ công trình (năm)',
-                    'year_built': 'Năm xây dựng',
-                    'neighborhood': 'Khu vực / Phường (Neighborhood)',
-                    'building_category': 'Phân loại công trình',
-                    'building_class_present': 'Hạng công trình hiện tại',
-                    'building_class_category': 'Phân nhóm công trình',
-                    'building_class_at_time_of_sale': 'Hạng bất động sản',
-                    'building_class_sale': 'Hạng công trình khi bán',
-                    'tax_class_present': 'Hạng thuế bất động sản',
-                    'tax_class_sale': 'Hạng thuế khi bán',
-                    'tax_class_at_time_of_sale': 'Hạng thuế giao dịch',
-                    'borough_name': 'Quận (Borough)',
-                    'borough': 'Quận',
-                    'block': 'Mã khối phố (Block)',
-                    'lot': 'Mã lô đất (Lot)',
-                    'zip_code': 'Mã bưu chính (Zipcode)',
-                    'sale_month': 'Tháng giao dịch',
-                    'sale_quarter': 'Quý giao dịch',
-                    'sale_year': 'Năm giao dịch',
-                    'total_units_calculated': 'Tổng số căn hộ',
-                    'total_units': 'Tổng số căn hộ',
-                    'residential_units': 'Số căn hộ để ở',
-                    'commercial_units': 'Số căn hộ thương mại',
-                    'gross_per_unit': 'Diện tích TB / căn',
-                    'pop_density': 'Mật độ dân số khu vực',
-                    'amenity_score': 'Điểm tiện ích xung quanh',
-                    'avg_income': 'Thu nhập bình quân khu vực',
-                    'dist_center': 'Khoảng cách trung tâm'
-                }
-                imp4s['Tên'] = imp4s['Feature'].map(lambda f: imp_name_map.get(f, FEATURE_LABELS.get(f, f)))
-                imp4s = imp4s.sort_values('Importance', ascending=True)
-                max_imp_val = imp4s['Importance'].max()
-                fig_i = px.bar(imp4s, x='Importance', y='Tên', orientation='h',
-                               color='Importance', color_continuous_scale='Purples',
-                               text=imp4s['Importance'].apply(lambda v: f'{v*100:.1f}%'),
-                               labels={'Importance': 'Tỷ lệ phần trăm đóng góp', 'Tên': 'Đặc trưng'},
-                               title='Top 15 Yếu tố quan trọng nhất (CatBoost Feature Importance)')
-                fig_i.update_traces(textposition='outside', cliponaxis=False)
-                clayout(fig_i, h=430, t=35, b=10, r=40, l=10)
-                fig_i.update_layout(coloraxis_showscale=False,
-                                    title_font=dict(size=13, color='#374151'),
-                                    xaxis=dict(tickformat='.0%', automargin=True, title='Mức độ quan trọng (%)', range=[0, max_imp_val * 1.30]),
-                                    yaxis=dict(automargin=True, title=''),
-                                    margin=dict(r=45, l=10, t=35, b=20))
-                st.plotly_chart(fig_i, width='stretch')
-        with ci2:
-            section_q("Độ chính xác: Giá AI dự báo vs Giá thực tế",
-                      "Phân bố các giao dịch kiểm thử và đường chuẩn lý tưởng y = x")
-            if df_pred is not None:
-                pp4 = df_pred.sample(n=min(5000, len(df_pred)), random_state=42)
-                max_view = 2800000
+        section_q("Độ chính xác: Giá AI dự báo vs Giá thực tế",
+                  "Phân bố các giao dịch kiểm thử và đường chuẩn lý tưởng y = x")
+        if df_pred is not None:
+            pp4 = df_pred.sample(n=min(5000, len(df_pred)), random_state=42)
+            max_view = 2800000
 
-                fig_av4 = go.Figure()
-                
-                # Scatter points: Bất động sản kiểm thử
-                fig_av4.add_trace(go.Scatter(
-                    x=pp4['Actual'],
-                    y=pp4['Predicted'],
-                    mode='markers',
-                    name='Bất động sản kiểm thử',
-                    marker=dict(color='#0284c7', size=5, opacity=0.35),
-                    hovertemplate="Giá thực tế: $%{x:,.0f}<br>Giá AI dự báo: $%{y:,.0f}<extra></extra>"
-                ))
-                
-                # Ideal Line: Đường chuẩn lý tưởng (y = x)
-                fig_av4.add_trace(go.Scatter(
-                    x=[0, max_view],
-                    y=[0, max_view],
-                    mode='lines',
-                    name='Đường chuẩn lý tưởng (y = x)',
-                    line=dict(color='#dc2626', width=2, dash='dash'),
-                    hoverinfo='skip'
-                ))
+            fig_av4 = go.Figure()
+            
+            # Scatter points: Bất động sản kiểm thử
+            fig_av4.add_trace(go.Scatter(
+                x=pp4['Actual'],
+                y=pp4['Predicted'],
+                mode='markers',
+                name='Bất động sản kiểm thử',
+                marker=dict(color='#0284c7', size=5, opacity=0.35),
+                hovertemplate="Giá thực tế: $%{x:,.0f}<br>Giá AI dự báo: $%{y:,.0f}<extra></extra>"
+            ))
+            
+            # Ideal Line: Đường chuẩn lý tưởng (y = x)
+            fig_av4.add_trace(go.Scatter(
+                x=[0, max_view],
+                y=[0, max_view],
+                mode='lines',
+                name='Đường chuẩn lý tưởng (y = x)',
+                line=dict(color='#dc2626', width=2, dash='dash'),
+                hoverinfo='skip'
+            ))
 
-                tick_vals = [0, 500000, 1000000, 1500000, 2000000, 2500000]
-                tick_text = ['$0.0M', '$0.5M', '$1.0M', '$1.5M', '$2.0M', '$2.5M']
+            tick_vals = [0, 500000, 1000000, 1500000, 2000000, 2500000]
+            tick_text = ['$0.0M', '$0.5M', '$1.0M', '$1.5M', '$2.0M', '$2.5M']
 
-                fig_av4.update_layout(
-                    title=dict(
-                        text='<b>CatBoost Regressor: Actual vs Predicted Price</b><br><span style="font-size:12px;font-weight:600;color:#475569;">(R² = 0.5616 | MAPE = 43.53%)</span>',
-                        x=0.5,
-                        xanchor='center',
-                        font=dict(size=14, color='#0f172a')
-                    ),
-                    xaxis=dict(
-                        title=dict(text='<b>Giá thực tế (Actual Price)</b>', font=dict(size=11, color='#1e293b')),
-                        range=[0, max_view],
-                        tickvals=tick_vals,
-                        ticktext=tick_text,
-                        showgrid=True,
-                        gridcolor='rgba(226, 232, 240, 0.8)',
-                        griddash='dot',
-                        showline=True,
-                        linewidth=1,
-                        linecolor='#94a3b8',
-                        mirror=True
-                    ),
-                    yaxis=dict(
-                        title=dict(text='<b>Giá AI dự báo (Predicted Price)</b>', font=dict(size=11, color='#1e293b')),
-                        range=[0, max_view],
-                        tickvals=tick_vals,
-                        ticktext=tick_text,
-                        showgrid=True,
-                        gridcolor='rgba(226, 232, 240, 0.8)',
-                        griddash='dot',
-                        showline=True,
-                        linewidth=1,
-                        linecolor='#94a3b8',
-                        mirror=True
-                    ),
-                    plot_bgcolor='white',
-                    paper_bgcolor='white',
-                    height=430,
-                    margin=dict(l=20, r=20, t=55, b=20),
-                    legend=dict(
-                        x=0.03,
-                        y=0.97,
-                        bgcolor='rgba(255, 255, 255, 0.92)',
-                        bordercolor='#cbd5e1',
-                        borderwidth=1,
-                        font=dict(size=10, color='#1e293b')
-                    )
+            fig_av4.update_layout(
+                title=dict(
+                    text='<b>CatBoost Regressor: Actual vs Predicted Price</b><br><span style="font-size:12px;font-weight:600;color:#475569;">(R² = 0.5616 | MAPE = 43.53%)</span>',
+                    x=0.5,
+                    xanchor='center',
+                    font=dict(size=14, color='#0f172a')
+                ),
+                xaxis=dict(
+                    title=dict(text='<b>Giá thực tế (Actual Price)</b>', font=dict(size=11, color='#1e293b')),
+                    range=[0, max_view],
+                    tickvals=tick_vals,
+                    ticktext=tick_text,
+                    showgrid=True,
+                    gridcolor='rgba(226, 232, 240, 0.8)',
+                    griddash='dot',
+                    showline=True,
+                    linewidth=1,
+                    linecolor='#94a3b8',
+                    mirror=True
+                ),
+                yaxis=dict(
+                    title=dict(text='<b>Giá AI dự báo (Predicted Price)</b>', font=dict(size=11, color='#1e293b')),
+                    range=[0, max_view],
+                    tickvals=tick_vals,
+                    ticktext=tick_text,
+                    showgrid=True,
+                    gridcolor='rgba(226, 232, 240, 0.8)',
+                    griddash='dot',
+                    showline=True,
+                    linewidth=1,
+                    linecolor='#94a3b8',
+                    mirror=True
+                ),
+                plot_bgcolor='white',
+                paper_bgcolor='white',
+                height=430,
+                margin=dict(l=20, r=20, t=55, b=20),
+                legend=dict(
+                    x=0.03,
+                    y=0.97,
+                    bgcolor='rgba(255, 255, 255, 0.92)',
+                    bordercolor='#cbd5e1',
+                    borderwidth=1,
+                    font=dict(size=10, color='#1e293b')
                 )
-                st.plotly_chart(fig_av4, width='stretch')
+            )
+            st.plotly_chart(fig_av4, width='stretch')
 
         if df_pred is not None:
             st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
